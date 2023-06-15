@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "common",
+    "gossipsub",
+]
+
+[workspace.dependencies]
+anyhow = "1.0.71"
+bytes = "1.4.0"
+futures = "0.3.28"
+libp2p = "0.51.3"
+thiserror = "1.0.40"
+tokio = "1.28.1"
