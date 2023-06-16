@@ -110,7 +110,7 @@
 //!            .boxed();
 //!
 //! // Create a Gossipsub topic
-//! let topic = waku_relay::gossipsub::IdentTopic::new("example");
+//! let topic = gossipsub::IdentTopic::new("example");
 //!
 //! // Set the message authenticity - How we expect to publish messages
 //! // Here we expect the publisher to sign the message with their key.
@@ -119,10 +119,10 @@
 //! // Create a Swarm to manage peers and events
 //! let mut swarm = {
 //!     // set default parameters for gossipsub
-//!     let gossipsub_config = waku_relay::gossipsub::Config::default();
+//!     let gossipsub_config = gossipsub::Config::default();
 //!     // build a gossipsub network behaviour
-//!     let mut gossipsub: waku_relay::gossipsub::Behaviour =
-//!         waku_relay::gossipsub::Behaviour::new(message_authenticity, gossipsub_config).unwrap();
+//!     let mut gossipsub: gossipsub::Behaviour =
+//!         gossipsub::Behaviour::new(message_authenticity, gossipsub_config).unwrap();
 //!     // subscribe to the topic
 //!     gossipsub.subscribe(&topic);
 //!     // create the swarm (use an executor in a real example)
