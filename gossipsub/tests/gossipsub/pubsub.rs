@@ -95,7 +95,7 @@ async fn strict_signing_and_validation() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = IdentTopic::new("/waku/2/it-waku/test");
+    let pubsub_topic = IdentTopic::new("/pubsub/2/it-pubsub/test");
     let message_payload = Bytes::from_static(b"test-payload");
 
     let publisher_key = testlib::secp256k1_keypair(
@@ -185,7 +185,7 @@ async fn random_author_signing_permissive_validation() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = IdentTopic::new("/waku/2/it-waku/test");
+    let pubsub_topic = IdentTopic::new("/pubsub/2/it-pubsub/test");
     let message_payload = Bytes::from_static(b"test-payload");
 
     let publisher_key = testlib::secp256k1_keypair(
@@ -273,7 +273,7 @@ async fn anonymous_signing_and_validation() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = IdentTopic::new("/waku/2/it-waku/test");
+    let pubsub_topic = IdentTopic::new("/pubsub/2/it-pubsub/test");
     let message_payload = Bytes::from_static(b"test-payload");
 
     let publisher_key = testlib::secp256k1_keypair(
