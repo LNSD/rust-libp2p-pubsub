@@ -144,11 +144,12 @@ impl Behaviour {
 
         // TODO: Add a subscription filter.
 
-        // If there are no active connections, we cannot publish the subscription.
+        // Add the subscription to the router.
+        self.router.subscribe(topic.clone());
+
+        // If there are no active connections, as we cannot publish the subscription, return.
         if self.connections.active_peers_count() == 0 {
-            return Err(SubscriptionError::SubscriptionPublishFailed(
-                SendError::InsufficientPeers,
-            ));
+            return Ok(true);
         }
 
         // Publish the subscription to the network.
@@ -160,9 +161,6 @@ impl Behaviour {
                 log::debug!("Failed to send topic {topic} subscription to peer {peer}: {err}");
             }
         }
-
-        // Add the subscription to the router.
-        self.router.subscribe(topic);
 
         Ok(true)
     }
@@ -182,11 +180,12 @@ impl Behaviour {
 
         // TODO: Add a subscription filter.
 
-        // If there are no active connections, we cannot publish the subscription.
+        // Remove the subscription from the router.
+        self.router.unsubscribe(&topic);
+
+        // If there are no active connections, as we cannot publish the subscription, return.
         if self.connections.active_peers_count() == 0 {
-            return Err(SubscriptionError::SubscriptionPublishFailed(
-                SendError::InsufficientPeers,
-            ));
+            return Ok(true);
         }
 
         // Publish the subscription to the network.
@@ -198,9 +197,6 @@ impl Behaviour {
                 log::debug!("Failed to send topic {topic} unsubscription to peer {peer}: {err}");
             }
         }
-
-        // Remove the subscription from the router.
-        self.router.unsubscribe(&topic);
 
         Ok(true)
     }

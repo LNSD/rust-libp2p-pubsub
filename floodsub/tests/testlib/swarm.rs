@@ -1,26 +1,21 @@
+#![allow(dead_code)]
+
 use std::fmt::Debug;
 
 use futures::StreamExt;
-use libp2p::identity::{secp256k1, Keypair};
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, Swarm};
-
-use floodsub::Behaviour;
 
 pub async fn poll<B: NetworkBehaviour<OutEvent = E>, E: Debug>(swarm: &mut Swarm<B>) {
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event: {:?}", event);
+        log::error!("Event: {:?}", event);
     }
 }
 
-pub fn secp256k1_keypair(key: &str) -> Keypair {
-    let raw_key = hex::decode(key).expect("key to be valid");
-    let secret_key = secp256k1::SecretKey::try_from_bytes(raw_key).unwrap();
-    secp256k1::Keypair::from(secret_key).into()
-}
-
-pub async fn wait_for_new_listen_addr(swarm: &mut Swarm<Behaviour>) -> Multiaddr {
+pub async fn wait_for_new_listen_addr<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+    swarm: &mut Swarm<B>,
+) -> Multiaddr {
     loop {
         let event = swarm.select_next_some().await;
         log::trace!("Event: {:?}", event);
@@ -30,7 +25,9 @@ pub async fn wait_for_new_listen_addr(swarm: &mut Swarm<Behaviour>) -> Multiaddr
     }
 }
 
-pub async fn wait_for_incoming_connection(swarm: &mut Swarm<Behaviour>) {
+pub async fn wait_for_incoming_connection<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+    swarm: &mut Swarm<B>,
+) {
     loop {
         let event = swarm.select_next_some().await;
         log::trace!("Event: {:?}", event);
@@ -40,7 +37,7 @@ pub async fn wait_for_incoming_connection(swarm: &mut Swarm<Behaviour>) {
     }
 }
 
-pub async fn wait_for_dialing(swarm: &mut Swarm<Behaviour>) {
+pub async fn wait_for_dialing<B: NetworkBehaviour<OutEvent = E>, E: Debug>(swarm: &mut Swarm<B>) {
     loop {
         let event = swarm.select_next_some().await;
         log::trace!("Event: {:?}", event);
@@ -50,7 +47,9 @@ pub async fn wait_for_dialing(swarm: &mut Swarm<Behaviour>) {
     }
 }
 
-pub async fn wait_for_connection_established(swarm: &mut Swarm<Behaviour>) {
+pub async fn wait_for_connection_established<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+    swarm: &mut Swarm<B>,
+) {
     loop {
         let event = swarm.select_next_some().await;
         log::trace!("Event: {:?}", event);
