@@ -11,10 +11,10 @@ use libp2p::{InboundUpgrade, OutboundUpgrade};
 use common::prost_protobuf_codec::Codec as ProstCodec;
 
 use crate::proto::RpcProto;
-use crate::protocol_id::{SingleProtocolId, PROTOCOL_ID};
+use crate::protocol_id::{StaticProtocolId, PROTOCOL_ID};
 
 type Codec = ProstCodec<RpcProto>;
-type ProtocolId = SingleProtocolId<&'static [u8]>;
+type ProtocolId = StaticProtocolId<&'static str>;
 
 #[derive(Debug, Clone)]
 pub struct ProtocolUpgrade {

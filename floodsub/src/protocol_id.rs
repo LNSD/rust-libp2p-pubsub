@@ -1,24 +1,22 @@
-use libp2p::core::ProtocolName;
-
-pub const PROTOCOL_ID: &[u8] = b"/floodsub/1.0.0";
+pub const PROTOCOL_ID: &str = "/floodsub/1.0.0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SingleProtocolId<N: AsRef<[u8]>>(N);
+pub struct StaticProtocolId<N: AsRef<str>>(N);
 
-impl<N> SingleProtocolId<N>
+impl<N> StaticProtocolId<N>
 where
-    N: AsRef<[u8]>,
+    N: AsRef<str>,
 {
     pub fn new(protocol_id: N) -> Self {
         Self(protocol_id)
     }
 }
 
-impl<N> ProtocolName for SingleProtocolId<N>
+impl<N> AsRef<str> for StaticProtocolId<N>
 where
-    N: AsRef<[u8]>,
+    N: AsRef<str>,
 {
-    fn protocol_name(&self) -> &[u8] {
+    fn as_ref(&self) -> &str {
         self.0.as_ref()
     }
 }
