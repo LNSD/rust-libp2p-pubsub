@@ -1,6 +1,7 @@
-pub use swarm::secp256k1_keypair;
+pub use keys::secp256k1_keypair;
 pub use transport::*;
 
+pub mod keys;
 pub mod swarm;
 pub mod transport;
 

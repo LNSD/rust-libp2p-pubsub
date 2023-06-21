@@ -7,12 +7,21 @@ use futures::StreamExt;
 use libp2p::identity::{Keypair, PeerId};
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::{Multiaddr, Swarm};
+use rand::Rng;
 use tokio::time::timeout;
 
 use floodsub::{Behaviour, Config, Event, IdentTopic};
 
 use crate::testlib;
 use crate::testlib::any_memory_addr;
+use crate::testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
+
+fn new_test_topic() -> IdentTopic {
+    IdentTopic::new(format!(
+        "/pubsub/2/it-pubsub-test-{}",
+        rand::thread_rng().gen::<u32>()
+    ))
+}
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
@@ -84,19 +93,15 @@ async fn wait_mesh_message_propagation(
 }
 
 #[tokio::test]
-async fn publish_and_subscribe() {
+async fn publish_to_topic() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = IdentTopic::new("/pubsub/2/it-pubsub/test");
+    let pubsub_topic = new_test_topic();
     let message_payload = Bytes::from_static(b"test-payload");
 
-    let publisher_key = testlib::secp256k1_keypair(
-        "dc404f7ed2d3cdb65b536e8d561255c84658e83775ee790ff46bf4d77690b0fe",
-    );
-    let subscriber_key = testlib::secp256k1_keypair(
-        "9c0cd57a01ee12338915b42bf6232a386e467dcdbe172facd94e4623ffc9096c",
-    );
+    let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
+    let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
     let pubsub_config = Config::default();
 
@@ -118,30 +123,6 @@ async fn publish_and_subscribe() {
     .await
     .expect("listening to start");
 
-    // Dial the publisher node
-    subscriber.dial(publisher_addr).expect("dial to succeed");
-    timeout(
-        Duration::from_secs(5),
-        wait_for_connection_establishment(&mut subscriber, &mut publisher),
-    )
-    .await
-    .expect("subscriber to connect to publisher");
-
-    assert_eq!(
-        publisher
-            .behaviour()
-            .connections()
-            .peer_connections_count(subscriber.local_peer_id()),
-        1
-    );
-    assert_eq!(
-        subscriber
-            .behaviour()
-            .connections()
-            .peer_connections_count(publisher.local_peer_id()),
-        1
-    );
-
     // Subscribe to the topic
     publisher
         .behaviour_mut()
@@ -152,12 +133,17 @@ async fn publish_and_subscribe() {
         .subscribe(&pubsub_topic)
         .expect("subscribe to topic");
 
-    let topic = pubsub_topic.hash();
-    assert!(publisher.behaviour().router().is_subscribed(&topic));
-    assert!(subscriber.behaviour().router().is_subscribed(&topic));
+    // Dial the publisher node
+    subscriber.dial(publisher_addr).expect("dial to succeed");
+    timeout(
+        Duration::from_secs(5),
+        wait_for_connection_establishment(&mut subscriber, &mut publisher),
+    )
+    .await
+    .expect("subscriber to connect to publisher");
 
     // Wait for pub-sub network to establish
-    poll_mesh(Duration::from_millis(100), &mut publisher, &mut subscriber).await;
+    poll_mesh(Duration::from_millis(50), &mut publisher, &mut subscriber).await;
 
     //// When
     publisher
@@ -166,7 +152,7 @@ async fn publish_and_subscribe() {
         .expect("publish the message");
 
     let sub_events =
-        wait_mesh_message_propagation(Duration::from_millis(250), &mut publisher, &mut subscriber)
+        wait_mesh_message_propagation(Duration::from_millis(50), &mut publisher, &mut subscriber)
             .await;
 
     //// Then

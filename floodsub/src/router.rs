@@ -111,12 +111,12 @@ impl Router {
     }
 
     /// Get the topics a peer is subscribed to.
-    pub fn get_peer_subscriptions(&self, peer: &PeerId) -> Option<&BTreeSet<TopicHash>> {
+    pub fn peer_subscriptions(&self, peer: &PeerId) -> Option<&BTreeSet<TopicHash>> {
         self.peers_to_topics.get(peer)
     }
 
     /// Get the peers subscribed to a topic.
-    pub fn get_subscription_peers(&self, topic: &TopicHash) -> Option<&BTreeSet<PeerId>> {
+    pub fn subscription_peers(&self, topic: &TopicHash) -> Option<&BTreeSet<PeerId>> {
         self.topics_to_peers.get(topic)
     }
 }
@@ -130,7 +130,7 @@ impl Router {
     pub fn propagation_routes(&self, topic: &TopicHash) -> impl IntoIterator<Item = PeerId> {
         debug_assert!(self.is_subscribed(topic), "Not subscribed to topic");
 
-        if let Some(peers) = self.get_subscription_peers(topic) {
+        if let Some(peers) = self.subscription_peers(topic) {
             return peers.clone().into_iter();
         }
 
@@ -237,10 +237,10 @@ mod tests {
             router.add_peer_subscription(peer, topic.clone());
 
             //// Then
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(subscriptions.contains(&topic));
             });
-            assert_matches!(router.get_subscription_peers(&topic), Some(peers) => {
+            assert_matches!(router.subscription_peers(&topic), Some(peers) => {
                 assert!(peers.contains(&peer));
             });
         }
@@ -258,18 +258,18 @@ mod tests {
 
             //// Then
             // It should contain topics[0] topic.
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(subscriptions.contains(&topics[0]));
             });
-            assert_matches!(router.get_subscription_peers(&topics[0]), Some(peers) => {
+            assert_matches!(router.subscription_peers(&topics[0]), Some(peers) => {
                 assert!(peers.contains(&peer));
             });
 
             // It should contain topics[1] topic.
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(subscriptions.contains(&topics[1]));
             });
-            assert_matches!(router.get_subscription_peers(&topics[1]), Some(peers) => {
+            assert_matches!(router.subscription_peers(&topics[1]), Some(peers) => {
                 assert!(peers.contains(&peer));
             });
         }
@@ -289,13 +289,13 @@ mod tests {
             //// Then
             // It should NOT contain topics[0] topic.
             // It should contain topics[1] topic.
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(!subscriptions.contains(&topics[0]));
                 assert!(subscriptions.contains(&topics[1]));
             });
 
-            assert!(router.get_subscription_peers(&topics[0]).is_none());
-            assert_matches!(router.get_subscription_peers(&topics[1]), Some(peers) => {
+            assert!(router.subscription_peers(&topics[0]).is_none());
+            assert_matches!(router.subscription_peers(&topics[1]), Some(peers) => {
                 assert!(peers.contains(&peer));
             });
         }
@@ -313,8 +313,8 @@ mod tests {
             router.remove_peer_subscription(&peer, &topic);
 
             //// Then
-            assert!(router.get_peer_subscriptions(&peer).is_none());
-            assert!(router.get_subscription_peers(&topic).is_none());
+            assert!(router.peer_subscriptions(&peer).is_none());
+            assert!(router.subscription_peers(&topic).is_none());
         }
 
         #[test]
@@ -331,7 +331,7 @@ mod tests {
             router.remove_peer_subscription(&peer, &unknown_topic);
 
             //// Then
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(subscriptions.contains(&topic));
             });
         }
@@ -350,7 +350,7 @@ mod tests {
             router.remove_peer_subscription(&unknown_peer, &topic);
 
             //// Then
-            assert_matches!(router.get_peer_subscriptions(&peer), Some(subscriptions) => {
+            assert_matches!(router.peer_subscriptions(&peer), Some(subscriptions) => {
                 assert!(subscriptions.contains(&topic));
             });
         }
@@ -370,10 +370,10 @@ mod tests {
             router.remove_peer(&peer_a);
 
             //// Then
-            assert!(router.get_peer_subscriptions(&peer_a).is_none());
-            assert!(router.get_peer_subscriptions(&peer_b).is_some());
+            assert!(router.peer_subscriptions(&peer_a).is_none());
+            assert!(router.peer_subscriptions(&peer_b).is_some());
 
-            assert_matches!(router.get_subscription_peers(&topic), Some(peers) => {
+            assert_matches!(router.subscription_peers(&topic), Some(peers) => {
                 assert!(!peers.contains(&peer_a));
                 assert!(peers.contains(&peer_b));
             });
