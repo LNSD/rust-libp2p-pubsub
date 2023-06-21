@@ -8,6 +8,6 @@ members = [
 anyhow = "1.0.71"
 bytes = "1.4.0"
 futures = "0.3.28"
-libp2p = "0.51.3"
+libp2p = "0.52.0"
 thiserror = "1.0.40"
 tokio = "1.28.1"

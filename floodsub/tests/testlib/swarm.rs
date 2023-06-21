@@ -6,14 +6,14 @@ use futures::StreamExt;
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, Swarm};
 
-pub async fn poll<B: NetworkBehaviour<OutEvent = E>, E: Debug>(swarm: &mut Swarm<B>) {
+pub async fn poll<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(swarm: &mut Swarm<B>) {
     loop {
         let event = swarm.select_next_some().await;
         log::error!("Event: {:?}", event);
     }
 }
 
-pub async fn wait_for_new_listen_addr<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+pub async fn wait_for_new_listen_addr<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) -> Multiaddr {
     loop {
@@ -25,7 +25,7 @@ pub async fn wait_for_new_listen_addr<B: NetworkBehaviour<OutEvent = E>, E: Debu
     }
 }
 
-pub async fn wait_for_incoming_connection<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+pub async fn wait_for_incoming_connection<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) {
     loop {
@@ -37,7 +37,7 @@ pub async fn wait_for_incoming_connection<B: NetworkBehaviour<OutEvent = E>, E: 
     }
 }
 
-pub async fn wait_for_dialing<B: NetworkBehaviour<OutEvent = E>, E: Debug>(swarm: &mut Swarm<B>) {
+pub async fn wait_for_dialing<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(swarm: &mut Swarm<B>) {
     loop {
         let event = swarm.select_next_some().await;
         log::trace!("Event: {:?}", event);
@@ -47,7 +47,7 @@ pub async fn wait_for_dialing<B: NetworkBehaviour<OutEvent = E>, E: Debug>(swarm
     }
 }
 
-pub async fn wait_for_connection_established<B: NetworkBehaviour<OutEvent = E>, E: Debug>(
+pub async fn wait_for_connection_established<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) {
     loop {

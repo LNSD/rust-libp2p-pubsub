@@ -6,25 +6,24 @@ use std::time::{Duration, Instant};
 use asynchronous_codec::Framed;
 use futures::future::Either;
 use futures::prelude::*;
-use libp2p::core::upgrade::{DeniedUpgrade, NegotiationError};
-use libp2p::core::UpgradeError;
+use libp2p::core::upgrade::DeniedUpgrade;
 use libp2p::swarm::handler::{
     ConnectionEvent, DialUpgradeError, FullyNegotiatedInbound, FullyNegotiatedOutbound,
 };
 use libp2p::swarm::{
-    ConnectionHandler, ConnectionHandlerEvent, ConnectionHandlerUpgrErr, KeepAlive,
-    NegotiatedSubstream, SubstreamProtocol,
+    ConnectionHandler, ConnectionHandlerEvent, KeepAlive, Stream, StreamUpgradeError,
+    SubstreamProtocol,
 };
 use smallvec::SmallVec;
 
 use common::prost_protobuf_codec::Codec as ProstCodec;
 
 use crate::proto::RpcProto;
-use crate::protocol_id::SingleProtocolId;
+use crate::protocol_id::StaticProtocolId;
 use crate::upgrade::ProtocolUpgrade;
 
 type Codec = ProstCodec<RpcProto>;
-type ProtocolId = SingleProtocolId<&'static [u8]>;
+type ProtocolId = StaticProtocolId<&'static str>;
 
 #[derive(Debug)]
 pub enum Command {
@@ -74,8 +73,8 @@ impl DisabledHandler {
 }
 
 impl ConnectionHandler for DisabledHandler {
-    type InEvent = Command;
-    type OutEvent = Event;
+    type FromBehaviour = Command;
+    type ToBehaviour = Event;
     type Error = Infallible;
     type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
     type OutboundProtocol = ProtocolUpgrade;
@@ -99,19 +98,21 @@ impl ConnectionHandler for DisabledHandler {
         ConnectionHandlerEvent<
             Self::OutboundProtocol,
             Self::OutboundOpenInfo,
-            Self::OutEvent,
+            Self::ToBehaviour,
             Self::Error,
         >,
     > {
         if !self.reason_emitted {
             self.reason_emitted = true;
-            return Poll::Ready(ConnectionHandlerEvent::Custom(Event::Disabled(self.reason)));
+            return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(Event::Disabled(
+                self.reason,
+            )));
         }
 
         Poll::Pending
     }
 
-    fn on_behaviour_event(&mut self, event: Self::InEvent) {
+    fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         log::debug!("Ignoring incoming message because handler is disabled: {event:?}")
     }
 
@@ -130,9 +131,9 @@ impl ConnectionHandler for DisabledHandler {
 
 enum InboundSubstreamState {
     /// Waiting for a message from the remote. The idle state for an inbound substream.
-    WaitingInput(Framed<NegotiatedSubstream, Codec>),
+    WaitingInput(Framed<Stream, Codec>),
     /// The substream is being closed.
-    Closing(Framed<NegotiatedSubstream, Codec>),
+    Closing(Framed<Stream, Codec>),
     /// An error occurred during processing.
     Poisoned,
 }
@@ -140,11 +141,11 @@ enum InboundSubstreamState {
 /// State of the outbound substream, opened either by us or by the remote.
 enum OutboundSubstreamState {
     /// Waiting for the user to send a message. The idle state for an outbound substream.
-    WaitingOutput(Framed<NegotiatedSubstream, Codec>),
+    WaitingOutput(Framed<Stream, Codec>),
     /// Waiting to send a message to the remote.
-    PendingSend(Framed<NegotiatedSubstream, Codec>, RpcProto),
+    PendingSend(Framed<Stream, Codec>, RpcProto),
     /// Waiting to flush the substream so that the data arrives to the remote.
-    PendingFlush(Framed<NegotiatedSubstream, Codec>),
+    PendingFlush(Framed<Stream, Codec>),
     /// An error occurred during processing.
     Poisoned,
 }
@@ -194,7 +195,7 @@ impl SimpleHandler {
 
     fn on_fully_negotiated_inbound(
         &mut self,
-        (substream, _protocol_id): (Framed<NegotiatedSubstream, Codec>, ProtocolId),
+        (substream, _protocol_id): (Framed<Stream, Codec>, ProtocolId),
     ) {
         // new inbound substream. Replace the current one, if it exists.
         log::trace!("new inbound substream request");
@@ -219,8 +220,8 @@ impl SimpleHandler {
 }
 
 impl ConnectionHandler for SimpleHandler {
-    type InEvent = Command;
-    type OutEvent = Event;
+    type FromBehaviour = Command;
+    type ToBehaviour = Event;
     type Error = Infallible;
     type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
     type OutboundProtocol = ProtocolUpgrade;
@@ -255,7 +256,7 @@ impl ConnectionHandler for SimpleHandler {
         ConnectionHandlerEvent<
             Self::OutboundProtocol,
             Self::OutboundOpenInfo,
-            Self::OutEvent,
+            Self::ToBehaviour,
             Self::Error,
         >,
     > {
@@ -285,7 +286,7 @@ impl ConnectionHandler for SimpleHandler {
                             self.last_io_activity = Instant::now();
                             self.inbound_substream =
                                 Some(InboundSubstreamState::WaitingInput(substream));
-                            return Poll::Ready(ConnectionHandlerEvent::Custom(
+                            return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
                                 Event::FrameReceived(message),
                             ));
                         }
@@ -417,7 +418,7 @@ impl ConnectionHandler for SimpleHandler {
         Poll::Pending
     }
 
-    fn on_behaviour_event(&mut self, event: Self::InEvent) {
+    fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         match event {
             Command::SendFrame(msg) => self.send_queue.push(msg),
             Command::KeepAlive => {
@@ -452,16 +453,13 @@ impl ConnectionHandler for SimpleHandler {
                 self.on_fully_negotiated_outbound(fully_negotiated_outbound)
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
-                error: ConnectionHandlerUpgrErr::Timeout | ConnectionHandlerUpgrErr::Timer,
+                error: StreamUpgradeError::Timeout,
                 ..
             }) => {
                 log::debug!("Dial upgrade error: Protocol negotiation timeout");
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
-                error:
-                    ConnectionHandlerUpgrErr::Upgrade(UpgradeError::Select(
-                        NegotiationError::ProtocolError(e),
-                    )),
+                error: StreamUpgradeError::Io(e),
                 ..
             }) => {
                 log::debug!("Protocol negotiation failed: {e}")
@@ -525,8 +523,8 @@ impl Handler {
 }
 
 impl ConnectionHandler for Handler {
-    type InEvent = Command;
-    type OutEvent = Event;
+    type FromBehaviour = Command;
+    type ToBehaviour = Event;
     type Error = Infallible;
     type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
     type OutboundProtocol = ProtocolUpgrade;
@@ -554,7 +552,7 @@ impl ConnectionHandler for Handler {
         ConnectionHandlerEvent<
             Self::OutboundProtocol,
             Self::OutboundOpenInfo,
-            Self::OutEvent,
+            Self::ToBehaviour,
             Self::Error,
         >,
     > {
@@ -564,7 +562,7 @@ impl ConnectionHandler for Handler {
         }
     }
 
-    fn on_behaviour_event(&mut self, event: Self::InEvent) {
+    fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         match &mut self.inner {
             HandlerState::Enabled(handler) => handler.on_behaviour_event(event),
             HandlerState::Disabled(handler) => handler.on_behaviour_event(event),
@@ -605,7 +603,7 @@ impl ConnectionHandler for Handler {
         }
 
         if let ConnectionEvent::DialUpgradeError(DialUpgradeError {
-            error: ConnectionHandlerUpgrErr::Upgrade(UpgradeError::Select(NegotiationError::Failed)),
+            error: StreamUpgradeError::NegotiationFailed,
             ..
         }) = event
         {
@@ -627,7 +625,6 @@ impl ConnectionHandler for Handler {
 mod tests {
     use assert_matches::assert_matches;
     use libp2p::core::UpgradeInfo;
-    use libp2p::swarm::handler::ListenUpgradeError;
 
     use super::*;
 
@@ -651,11 +648,9 @@ mod tests {
 
         //// When
         for _ in 0..MAX_SUBSTREAM_ATTEMPTS {
-            handler.on_connection_event(ConnectionEvent::ListenUpgradeError(ListenUpgradeError {
+            handler.on_connection_event(ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 info: (),
-                error: ConnectionHandlerUpgrErr::Upgrade(UpgradeError::Select(
-                    NegotiationError::Failed,
-                )),
+                error: StreamUpgradeError::NegotiationFailed,
             }));
         }
 
@@ -672,9 +667,7 @@ mod tests {
         for _ in 0..MAX_SUBSTREAM_ATTEMPTS {
             handler.on_connection_event(ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 info: (),
-                error: ConnectionHandlerUpgrErr::Upgrade(UpgradeError::Select(
-                    NegotiationError::Failed,
-                )),
+                error: StreamUpgradeError::NegotiationFailed,
             }));
         }
 
