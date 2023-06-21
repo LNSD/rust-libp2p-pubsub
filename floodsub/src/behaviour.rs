@@ -468,7 +468,7 @@ impl Behaviour {
     ) -> Result<(), SendError> {
         let frames = fragment_rpc_message(frame.into(), self.config.max_frame_size)?;
 
-        // Send the RPC frame(s) to any active connection with the peer.
+        // Send the RPC frame(s) to any active connection with the peer
         for frame in frames {
             self.emit_handler_event(dst, HandlerCommand::SendFrame(frame), NotifyHandler::Any);
         }
