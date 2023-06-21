@@ -56,9 +56,9 @@ fn new_libp2p_gossipsus_node(
 }
 
 async fn poll_nodes<
-    B1: NetworkBehaviour<OutEvent = E1>,
+    B1: NetworkBehaviour<ToSwarm = E1>,
     E1: Debug,
-    B2: NetworkBehaviour<OutEvent = E2>,
+    B2: NetworkBehaviour<ToSwarm = E2>,
     E2: Debug,
 >(
     duration: Duration,
@@ -74,9 +74,9 @@ async fn poll_nodes<
 }
 
 async fn wait_for_start_listening<
-    B1: NetworkBehaviour<OutEvent = E1>,
+    B1: NetworkBehaviour<ToSwarm = E1>,
     E1: Debug,
-    B2: NetworkBehaviour<OutEvent = E2>,
+    B2: NetworkBehaviour<ToSwarm = E2>,
     E2: Debug,
 >(
     publisher: &mut Swarm<B1>,
@@ -89,9 +89,9 @@ async fn wait_for_start_listening<
 }
 
 async fn wait_for_connection_establishment<
-    B1: NetworkBehaviour<OutEvent = E1>,
+    B1: NetworkBehaviour<ToSwarm = E1>,
     E1: Debug,
-    B2: NetworkBehaviour<OutEvent = E2>,
+    B2: NetworkBehaviour<ToSwarm = E2>,
     E2: Debug,
 >(
     dialer: &mut Swarm<B1>,

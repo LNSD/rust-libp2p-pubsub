@@ -479,7 +479,7 @@ impl Behaviour {
 
 impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = Handler;
-    type OutEvent = Event;
+    type ToSwarm = Event;
 
     fn handle_established_inbound_connection(
         &mut self,
@@ -544,7 +544,7 @@ impl NetworkBehaviour for Behaviour {
         &mut self,
         _cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
-    ) -> Poll<ToSwarm<Self::OutEvent, THandlerInEvent<Self>>> {
+    ) -> Poll<ToSwarm<Self::ToSwarm, THandlerInEvent<Self>>> {
         if let Some(event) = self.swarm_out_events.pop_front() {
             return Poll::Ready(event);
         }
