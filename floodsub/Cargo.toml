@@ -16,7 +16,7 @@ futures-ticker = "0.0.3"
 hex_fmt = "0.3.0"
 instant = "0.1.12"
 libp2p = { version = "0.52.0", features = ["macros"] }
-log = "0.4.18"
+log = "0.4.19"
 prometheus-client = "0.21.1"
 prost = "0.11.9"
 rand = "0.8"
