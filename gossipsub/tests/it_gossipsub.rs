@@ -1,2 +1,0 @@
-mod gossipsub;
-mod testlib;

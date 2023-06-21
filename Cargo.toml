@@ -2,7 +2,6 @@
 members = [
     "common",
     "floodsub",
-    "gossipsub",
 ]
 
 [workspace.dependencies]
