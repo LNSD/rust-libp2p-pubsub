@@ -16,7 +16,7 @@ use libp2p::swarm::{
 };
 use smallvec::SmallVec;
 
-use common::prost_protobuf_codec::Codec as ProstCodec;
+use common::codec::ProstCodec;
 
 use crate::proto::RpcProto;
 use crate::protocol_id::StaticProtocolId;

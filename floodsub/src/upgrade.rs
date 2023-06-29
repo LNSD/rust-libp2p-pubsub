@@ -8,7 +8,7 @@ use futures::{future, AsyncRead, AsyncWrite};
 use libp2p::core::UpgradeInfo;
 use libp2p::{InboundUpgrade, OutboundUpgrade};
 
-use common::prost_protobuf_codec::Codec as ProstCodec;
+use common::codec::ProstCodec;
 
 use crate::proto::RpcProto;
 use crate::protocol_id::{StaticProtocolId, PROTOCOL_ID};

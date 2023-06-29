@@ -4,31 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow.workspace = true
 asynchronous-codec = "0.6"
 base64 = "0.21.2"
-byteorder = "1.4.3"
 bytes = "1.4.0"
 either = "1.8"
-fnv = "1.0.7"
 futures = "0.3.28"
-futures-ticker = "0.0.3"
-hex_fmt = "0.3.0"
 instant = "0.1.12"
 libp2p = { version = "0.52.0", features = ["macros"] }
 log = "0.4.19"
 prometheus-client = "0.21.1"
 prost = "0.11.9"
 rand = "0.8"
-regex = "1.8.4"
 serde = { version = "1", optional = true, features = ["derive"] }
 sha2 = "0.10.7"
 smallvec = "1.10.0"
 strum_macros = "0.25.0"
-thiserror.workspace = true
-unsigned-varint = { version = "0.7.1", features = ["asynchronous_codec"] }
-void = "1.0.2"
-common = { version = "0.1.0", path = "../common" }
+thiserror = { workspace = true }
+common = { version = "0.1.0", path = "../common", features = ["prost_codec"] }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
@@ -38,6 +30,7 @@ hex-literal = "0.4.1"
 libp2p = { version = "0.52.0", features = ["noise", "yamux", "secp256k1", "tokio", "gossipsub"] }
 pretty_env_logger = "0.5.0"
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
+void = "1.0.2"
 
 # Passing arguments to the docsrs builder in order to properly document cfg's.
 # More information: https://docs.rs/about/builds#cross-compiling

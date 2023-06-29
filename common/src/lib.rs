@@ -1,2 +1,2 @@
-pub mod prost_protobuf_codec;
-pub mod quick_protobuf_codec;
+#[cfg(any(feature = "prost_codec", feature = "quick_protobuf_codec"))]
+pub mod codec;
