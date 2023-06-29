@@ -2,11 +2,22 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+use std::marker::PhantomData;
+
 use asynchronous_codec::{Decoder, Encoder};
 use bytes::{Bytes, BytesMut};
 use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
-use std::marker::PhantomData;
 use unsigned_varint::codec::UviBytes;
+
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to encode/decode message")]
+pub struct Error(#[from] std::io::Error);
+
+impl From<Error> for std::io::Error {
+    fn from(e: Error) -> Self {
+        e.0
+    }
+}
 
 /// [`Codec`] implements [`Encoder`] and [`Decoder`], uses [`unsigned_varint`]
 /// to prefix messages with their length and uses [`quick_protobuf`] and a provided
@@ -64,15 +75,5 @@ where
         let message = Self::Item::from_reader(&mut reader, &msg)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         Ok(Some(message))
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-#[error("Failed to encode/decode message")]
-pub struct Error(#[from] std::io::Error);
-
-impl From<Error> for std::io::Error {
-    fn from(e: Error) -> Self {
-        e.0
     }
 }

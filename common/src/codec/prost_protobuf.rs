@@ -1,11 +1,27 @@
-use std::io;
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+
 use std::marker::PhantomData;
 
 use asynchronous_codec::{Decoder, Encoder};
-pub use asynchronous_codec::{FramedRead, FramedWrite};
 use bytes::BytesMut;
-use prost::Message;
+use prost::{DecodeError, Message};
 use unsigned_varint::codec::UviBytes;
+
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to encode/decode message")]
+pub struct Error(#[from] std::io::Error);
+
+impl From<Error> for std::io::Error {
+    fn from(e: Error) -> Self {
+        e.0
+    }
+}
+
+impl From<DecodeError> for Error {
+    fn from(e: DecodeError) -> Self {
+        Self(e.into())
+    }
+}
 
 /// [`Codec`] implements [`Encoder`] and [`Decoder`], uses [`unsigned_varint`]
 /// to prefix messages with their length and uses [`prost`] and a provided
@@ -33,19 +49,21 @@ impl<In, Out> Codec<In, Out> {
 
 impl<In: Message, Out> Encoder for Codec<In, Out> {
     type Item = In;
-    type Error = io::Error;
+    type Error = Error;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let mut encoded_msg = BytesMut::with_capacity(item.encoded_len());
         item.encode(&mut encoded_msg)
             .expect("BytesMut to have sufficient capacity.");
-        self.uvi.encode(encoded_msg.freeze(), dst)
+        self.uvi.encode(encoded_msg.freeze(), dst)?;
+
+        Ok(())
     }
 }
 
 impl<In, Out: Message + Default> Decoder for Codec<In, Out> {
     type Item = Out;
-    type Error = io::Error;
+    type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         Ok(self
