@@ -6,14 +6,14 @@ pub struct Config {
     pub max_frame_size: usize,
 
     /// The idle timeout of a connection.
-    pub idle_timeout: Duration,
+    pub connection_idle_timeout: Duration,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             max_frame_size: 65537,
-            idle_timeout: Duration::from_secs(120),
+            connection_idle_timeout: Duration::from_secs(120),
         }
     }
 }

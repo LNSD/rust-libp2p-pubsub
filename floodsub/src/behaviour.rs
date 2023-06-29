@@ -22,6 +22,8 @@ use crate::router::Router;
 use crate::seqno::{LinearSequenceNumber, MessageSeqNumberGenerator};
 use crate::topic::{Hasher, Topic, TopicHash};
 
+pub const FLOODSUB_PROTOCOL_ID: &str = "/floodsub/1.0.0";
+
 /// Events that can be produced by the behaviour.
 #[derive(Debug)]
 pub enum Event {
@@ -496,8 +498,9 @@ impl NetworkBehaviour for Behaviour {
         );
 
         Ok(Handler::new(
+            FLOODSUB_PROTOCOL_ID,
             self.config.max_frame_size,
-            self.config.idle_timeout,
+            self.config.connection_idle_timeout,
         ))
     }
 
@@ -512,8 +515,9 @@ impl NetworkBehaviour for Behaviour {
             .register_outbound(connection_id, peer, remote_addr.clone());
 
         Ok(Handler::new(
+            FLOODSUB_PROTOCOL_ID,
             self.config.max_frame_size,
-            self.config.idle_timeout,
+            self.config.connection_idle_timeout,
         ))
     }
 
