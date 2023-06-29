@@ -19,11 +19,11 @@ use smallvec::SmallVec;
 use common::codec::ProstCodec;
 
 use crate::proto::RpcProto;
-use crate::protocol_id::StaticProtocolId;
-use crate::upgrade::ProtocolUpgrade;
+use crate::upgrade::{FramedUpgrade, FramedUpgradeOutput};
 
 type Codec = ProstCodec<RpcProto>;
-type ProtocolId = StaticProtocolId<&'static str>;
+type ProtocolId = &'static str;
+type Upgrade = FramedUpgrade<ProtocolId>;
 
 #[derive(Debug)]
 pub enum Command {
@@ -76,8 +76,8 @@ impl ConnectionHandler for DisabledHandler {
     type FromBehaviour = Command;
     type ToBehaviour = Event;
     type Error = Infallible;
-    type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
-    type OutboundProtocol = ProtocolUpgrade;
+    type InboundProtocol = either::Either<Upgrade, DeniedUpgrade>;
+    type OutboundProtocol = Upgrade;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = ();
 
@@ -154,7 +154,7 @@ enum OutboundSubstreamState {
 /// a connection with a peer.
 pub struct SimpleHandler {
     /// Upgrade configuration for the protocol.
-    upgrade: ProtocolUpgrade,
+    upgrade: Upgrade,
 
     /// The single long-lived outbound substream.
     outbound_substream: Option<OutboundSubstreamState>,
@@ -180,7 +180,7 @@ pub struct SimpleHandler {
 }
 
 impl SimpleHandler {
-    pub(crate) fn new(listen_protocol: ProtocolUpgrade, idle_timeout: Duration) -> Self {
+    pub(crate) fn new(listen_protocol: Upgrade, idle_timeout: Duration) -> Self {
         Self {
             upgrade: listen_protocol,
             outbound_substream: None,
@@ -193,13 +193,12 @@ impl SimpleHandler {
         }
     }
 
-    fn on_fully_negotiated_inbound(
-        &mut self,
-        (substream, _protocol_id): (Framed<Stream, Codec>, ProtocolId),
-    ) {
+    fn on_fully_negotiated_inbound(&mut self, protocol: FramedUpgradeOutput<Stream, ProtocolId>) {
+        let FramedUpgradeOutput { stream, .. } = protocol;
+
         // new inbound substream. Replace the current one, if it exists.
         log::trace!("new inbound substream request");
-        self.inbound_substream = Some(InboundSubstreamState::WaitingInput(substream));
+        self.inbound_substream = Some(InboundSubstreamState::WaitingInput(stream));
     }
 
     fn on_fully_negotiated_outbound(
@@ -209,13 +208,13 @@ impl SimpleHandler {
             <Self as ConnectionHandler>::OutboundOpenInfo,
         >,
     ) {
-        let (substream, _protocol_id) = protocol;
+        let FramedUpgradeOutput { stream, .. } = protocol;
 
         assert!(
             self.outbound_substream.is_none(),
             "Established an outbound substream with one already available"
         );
-        self.outbound_substream = Some(OutboundSubstreamState::WaitingOutput(substream));
+        self.outbound_substream = Some(OutboundSubstreamState::WaitingOutput(stream));
     }
 }
 
@@ -223,8 +222,8 @@ impl ConnectionHandler for SimpleHandler {
     type FromBehaviour = Command;
     type ToBehaviour = Event;
     type Error = Infallible;
-    type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
-    type OutboundProtocol = ProtocolUpgrade;
+    type InboundProtocol = either::Either<Upgrade, DeniedUpgrade>;
+    type OutboundProtocol = Upgrade;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = ();
 
@@ -497,8 +496,8 @@ pub struct Handler {
 
 impl Handler {
     // TODO: Make generic, decouple from Frame frame, from ProtocolUpgrade, etc.
-    pub fn new(max_frame_size: usize, idle_timeout: Duration) -> Self {
-        let upgrade = ProtocolUpgrade::new(max_frame_size);
+    pub fn new(protocol_id: ProtocolId, max_frame_size: usize, idle_timeout: Duration) -> Self {
+        let upgrade = FramedUpgrade::new(protocol_id, max_frame_size);
         Self {
             inbound_substream_attempts: 0,
             outbound_substream_attempts: 0,
@@ -526,8 +525,8 @@ impl ConnectionHandler for Handler {
     type FromBehaviour = Command;
     type ToBehaviour = Event;
     type Error = Infallible;
-    type InboundProtocol = either::Either<ProtocolUpgrade, DeniedUpgrade>;
-    type OutboundProtocol = ProtocolUpgrade;
+    type InboundProtocol = either::Either<Upgrade, DeniedUpgrade>;
+    type OutboundProtocol = Upgrade;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = ();
 
@@ -629,7 +628,7 @@ mod tests {
     use super::*;
 
     fn test_handler() -> Handler {
-        Handler::new(1024, Duration::from_secs(60))
+        Handler::new("/test/0.0.1", 1024, Duration::from_secs(60))
     }
 
     #[test]

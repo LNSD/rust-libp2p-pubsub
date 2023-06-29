@@ -9,7 +9,6 @@ mod connections;
 mod frame;
 mod handler;
 mod proto;
-mod protocol_id;
 mod router;
 mod seqno;
 mod topic;
