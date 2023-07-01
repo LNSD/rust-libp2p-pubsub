@@ -12,7 +12,6 @@ mod proto;
 mod router;
 mod seqno;
 mod topic;
-mod upgrade;
 
 pub type IdentTopic = Topic<topic::IdentityHash>;
 pub type Sha256Topic = Topic<topic::Sha256Hash>;

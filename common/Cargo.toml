@@ -4,13 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-prost_codec = ["dep:prost", "dep:asynchronous-codec"]
-quick_protobuf_codec = ["dep:quick-protobuf", "dep:asynchronous-codec"]
+prost_codec = ["dep:prost", "dep:asynchronous-codec", "dep:unsigned-varint"]
+quick_protobuf_codec = ["dep:quick-protobuf", "dep:asynchronous-codec", "dep:unsigned-varint"]
 
 [dependencies]
 asynchronous-codec = { version = "0.6.1", optional = true }
-bytes = "1.4.0"
+bytes = { workspace = true }
+futures = { workspace = true }
+libp2p = { workspace = true }
 prost = { version = "0.11.9", optional = true }
 quick-protobuf = { version = "0.8", optional = true }
 thiserror = { workspace = true }
-unsigned-varint = { version = "0.7.1", features = ["asynchronous-codec"] }
+unsigned-varint = { version = "0.7.1", features = ["asynchronous-codec"], optional = true }

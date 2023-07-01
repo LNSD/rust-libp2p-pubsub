@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 asynchronous-codec = "0.6"
 base64 = "0.21.2"
-bytes = "1.4.0"
+bytes = { workspace = true }
 either = "1.8"
 futures = "0.3.28"
 instant = "0.1.12"
