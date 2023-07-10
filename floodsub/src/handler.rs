@@ -17,13 +17,14 @@ use libp2p::swarm::{
 use smallvec::SmallVec;
 
 use common::codec::ProstCodec;
+use common::upgrade::{SimpleUpgrade, SimpleUpgradeOutput};
 
 use crate::proto::RpcProto;
-use crate::upgrade::{FramedUpgrade, FramedUpgradeOutput};
 
-type Codec = ProstCodec<RpcProto>;
 type ProtocolId = &'static str;
-type Upgrade = FramedUpgrade<ProtocolId>;
+type Codec = ProstCodec<RpcProto>;
+type Upgrade = SimpleUpgrade<ProtocolId>;
+type UpgradeOutput = SimpleUpgradeOutput<ProtocolId, Stream>;
 
 #[derive(Debug)]
 pub enum Command {
@@ -156,6 +157,9 @@ pub struct SimpleHandler {
     /// Upgrade configuration for the protocol.
     upgrade: Upgrade,
 
+    /// Maximum frame size.
+    max_frame_size: usize,
+
     /// The single long-lived outbound substream.
     outbound_substream: Option<OutboundSubstreamState>,
 
@@ -180,9 +184,14 @@ pub struct SimpleHandler {
 }
 
 impl SimpleHandler {
-    pub(crate) fn new(listen_protocol: Upgrade, idle_timeout: Duration) -> Self {
+    pub(crate) fn new(
+        listen_protocol: Upgrade,
+        max_frame_size: usize,
+        idle_timeout: Duration,
+    ) -> Self {
         Self {
             upgrade: listen_protocol,
+            max_frame_size,
             outbound_substream: None,
             inbound_substream: None,
             send_queue: SmallVec::new(),
@@ -193,8 +202,11 @@ impl SimpleHandler {
         }
     }
 
-    fn on_fully_negotiated_inbound(&mut self, protocol: FramedUpgradeOutput<Stream, ProtocolId>) {
-        let FramedUpgradeOutput { stream, .. } = protocol;
+    fn on_fully_negotiated_inbound(&mut self, protocol: UpgradeOutput) {
+        let UpgradeOutput { socket, .. } = protocol;
+
+        let codec = Codec::new(self.max_frame_size);
+        let stream = Framed::new(socket, codec);
 
         // new inbound substream. Replace the current one, if it exists.
         log::trace!("new inbound substream request");
@@ -208,7 +220,10 @@ impl SimpleHandler {
             <Self as ConnectionHandler>::OutboundOpenInfo,
         >,
     ) {
-        let FramedUpgradeOutput { stream, .. } = protocol;
+        let UpgradeOutput { socket, .. } = protocol;
+
+        let codec = Codec::new(self.max_frame_size);
+        let stream = Framed::new(socket, codec);
 
         assert!(
             self.outbound_substream.is_none(),
@@ -497,11 +512,11 @@ pub struct Handler {
 impl Handler {
     // TODO: Make generic, decouple from Frame frame, from ProtocolUpgrade, etc.
     pub fn new(protocol_id: ProtocolId, max_frame_size: usize, idle_timeout: Duration) -> Self {
-        let upgrade = FramedUpgrade::new(protocol_id, max_frame_size);
+        let upgrade = Upgrade::new(protocol_id);
         Self {
             inbound_substream_attempts: 0,
             outbound_substream_attempts: 0,
-            inner: HandlerState::Enabled(SimpleHandler::new(upgrade, idle_timeout)),
+            inner: HandlerState::Enabled(SimpleHandler::new(upgrade, max_frame_size, idle_timeout)),
         }
     }
 
