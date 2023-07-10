@@ -18,7 +18,7 @@ rand = "0.8"
 serde = { version = "1", optional = true, features = ["derive"] }
 sha2 = "0.10.7"
 smallvec = "1.10.0"
-strum_macros = "0.25.0"
+strum_macros = "0.25.1"
 thiserror = { workspace = true }
 common = { version = "0.1.0", path = "../common", features = ["prost_codec"] }
 
