@@ -8,7 +8,7 @@ prost_codec = ["dep:prost", "dep:asynchronous-codec", "dep:unsigned-varint"]
 quick_protobuf_codec = ["dep:quick-protobuf", "dep:asynchronous-codec", "dep:unsigned-varint"]
 
 [dependencies]
-asynchronous-codec = { version = "0.6.1", optional = true }
+asynchronous-codec = { version = "0.6.2", optional = true }
 bytes = { workspace = true }
 futures = { workspace = true }
 libp2p = { workspace = true }
