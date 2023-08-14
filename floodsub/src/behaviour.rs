@@ -468,7 +468,7 @@ impl Behaviour {
         dst: &PeerId,
         frame: impl Into<RpcProto>,
     ) -> Result<(), SendError> {
-        let frames = fragment_rpc_message(frame.into(), self.config.max_frame_size)?;
+        let frames = fragment_rpc_message(frame.into(), self.config.max_frame_size())?;
 
         // Send the RPC frame(s) to any active connection with the peer
         for frame in frames {
@@ -499,8 +499,8 @@ impl NetworkBehaviour for Behaviour {
 
         Ok(Handler::new(
             FLOODSUB_PROTOCOL_ID,
-            self.config.max_frame_size,
-            self.config.connection_idle_timeout,
+            self.config.max_frame_size(),
+            self.config.connection_idle_timeout(),
         ))
     }
 
@@ -516,8 +516,8 @@ impl NetworkBehaviour for Behaviour {
 
         Ok(Handler::new(
             FLOODSUB_PROTOCOL_ID,
-            self.config.max_frame_size,
-            self.config.connection_idle_timeout,
+            self.config.max_frame_size(),
+            self.config.connection_idle_timeout(),
         ))
     }
 
