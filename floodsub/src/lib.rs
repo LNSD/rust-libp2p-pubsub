@@ -8,6 +8,7 @@ mod config;
 mod connections;
 mod frame;
 mod handler;
+mod message_cache;
 mod message_id;
 mod proto;
 mod router;
