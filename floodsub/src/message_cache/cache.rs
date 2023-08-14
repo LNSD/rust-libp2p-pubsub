@@ -1,23 +1,20 @@
+use std::hash::Hash;
 use std::time::Duration;
 
 use hashlink::linked_hash_map::{LinkedHashMap, RawEntryMut};
 use instant::Instant;
 
-use crate::message_id::MessageId;
-use crate::Message;
-
-#[derive(Debug, Clone)]
-struct MessageCacheEntry {
+struct MessageCacheEntry<M> {
     /// The timestamp at which the message was received.
     pub timestamp: Instant,
     /// The message.
-    pub message: Message,
+    pub message: M,
 }
 
 /// Cache of messages that we have already seen.
 ///
 /// This is used to avoid sending the same message multiple times.
-pub struct MessageCache {
+pub struct MessageCache<K, V> {
     /// Maximum number of messages in the cache.
     capacity: usize,
 
@@ -29,10 +26,10 @@ pub struct MessageCache {
     /// A `LinkedHashMap` is used to keep track of the insertion order of the messages. The
     /// oldest insertions are at the front of the map, and the newest insertions are at the back of
     /// the map.
-    cache: LinkedHashMap<MessageId, MessageCacheEntry>,
+    cache: LinkedHashMap<K, MessageCacheEntry<V>>,
 }
 
-impl Default for MessageCache {
+impl<K, V> Default for MessageCache<K, V> {
     /// Creates a new empty cache.
     ///
     /// Capacity defaults to 1024 messages and a time-to-live to 5 seconds.
@@ -41,7 +38,7 @@ impl Default for MessageCache {
     }
 }
 
-impl MessageCache {
+impl<K, V> MessageCache<K, V> {
     /// Creates a new empty cache with the given capacity and time-to-live.
     #[must_use]
     pub fn with_capacity_and_ttl(capacity: usize, ttl: Duration) -> Self {
@@ -51,15 +48,20 @@ impl MessageCache {
             cache: LinkedHashMap::with_capacity(capacity),
         }
     }
+}
 
+impl<K, V> MessageCache<K, V>
+where
+    K: Eq + Hash + Clone,
+{
     /// Inserts a message in the cache.
     ///
     /// Returns `true` if the message was not already in the cache. Returns `false` if the message
     /// was already in the cache.
     ///
     /// If the source is `None`, then the message is assumed to have been sent by us.
-    pub fn put(&mut self, id: &MessageId, message: Message) -> bool {
-        let result = match self.cache.raw_entry_mut().from_key(&id) {
+    pub fn put(&mut self, id: &K, message: V) -> bool {
+        let result = match self.cache.raw_entry_mut().from_key(id) {
             RawEntryMut::Occupied(mut entry) => {
                 // If the entry has expired but it is still present, update the timestamp
                 // and pretend that the entry was not already in the cache.
@@ -91,7 +93,7 @@ impl MessageCache {
 
     /// Returns an iterator over all the entries of the cache (expired and not-expired).
     #[cfg(test)]
-    pub fn iter(&self) -> impl Iterator<Item = (&MessageId, &Message)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.cache.iter().map(|(id, entry)| (id, &entry.message))
     }
 
@@ -106,7 +108,7 @@ impl MessageCache {
 
     /// Returns `true` if the cache contains a non-expired message with the given ID.
     #[must_use]
-    pub fn contains_key(&self, id: &MessageId) -> bool {
+    pub fn contains_key(&self, id: &K) -> bool {
         self.cache
             .get(id)
             .is_some_and(|entry| entry.timestamp.elapsed() <= self.ttl)
@@ -115,7 +117,7 @@ impl MessageCache {
     /// Returns a reference to the message with the given ID, if it exists in the cache and has not
     /// expired.
     #[must_use]
-    pub fn get(&self, id: &MessageId) -> Option<&Message> {
+    pub fn get(&self, id: &K) -> Option<&V> {
         self.cache
             .get(id)
             .filter(|entry| entry.timestamp.elapsed() <= self.ttl)
@@ -125,7 +127,7 @@ impl MessageCache {
     /// Removes the message with the given ID from the cache.
     ///
     /// Returns the removed cache entry, if it existed in the cache and had not expired.
-    pub fn remove(&mut self, id: &MessageId) -> Option<Message> {
+    pub fn remove(&mut self, id: &K) -> Option<V> {
         self.cache
             .remove(id)
             .filter(|entry| entry.timestamp.elapsed() <= self.ttl)
