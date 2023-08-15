@@ -5,9 +5,9 @@ members = [
 ]
 
 [workspace.dependencies]
-anyhow = "1.0.72"
-bytes = "1.4.0"
-futures = "0.3.28"
-libp2p = "0.52.1"
-thiserror = "1.0.44"
-tokio = "1.29.1"
+anyhow = "1.0"
+bytes = "1.4"
+futures = "0.3"
+libp2p = "0.52"
+thiserror = "1.0"
+tokio = "1.29"
