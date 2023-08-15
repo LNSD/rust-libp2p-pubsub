@@ -6,16 +6,17 @@ use bytes::Bytes;
 use futures::StreamExt;
 use libp2p::identity::{Keypair, PeerId};
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
-use libp2p::{Multiaddr, Swarm};
+use libp2p::Swarm;
 use rand::Rng;
 use tokio::time::timeout;
 
-use floodsub::{Behaviour, Config, Event, IdentTopic};
+use floodsub::{Behaviour, Config, Event, Hasher, IdentTopic, Topic};
 
 use crate::testlib;
 use crate::testlib::any_memory_addr;
 use crate::testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
+/// Create a new test topic with a random name.
 fn new_test_topic() -> IdentTopic {
     IdentTopic::new(format!(
         "/pubsub/2/it-pubsub-test-{}",
@@ -23,6 +24,7 @@ fn new_test_topic() -> IdentTopic {
     ))
 }
 
+/// Create a new test node with the given keypair and config.
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = testlib::test_transport(keypair).expect("create the transport");
@@ -30,39 +32,31 @@ fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
 }
 
-async fn poll_mesh(
-    duration: Duration,
-    swarm1: &mut Swarm<Behaviour>,
-    swarm2: &mut Swarm<Behaviour>,
+/// Subscribe to a topic and assert that the subscription is successful.
+fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: &Topic<H>) -> bool {
+    let result = swarm.behaviour_mut().subscribe(topic);
+
+    assert_matches!(result, Ok(_), "subscribe to topic should succeed");
+
+    result.unwrap()
+}
+
+/// Publish to a topic and assert that the publish is successful.
+///
+/// Returns the `MessageId` of the published message.
+fn should_publish_to_topic<H: Hasher>(
+    swarm: &mut Swarm<Behaviour>,
+    topic: &Topic<H>,
+    data: impl Into<Vec<u8>>,
 ) {
-    timeout(
-        duration,
-        futures::future::join(testlib::swarm::poll(swarm1), testlib::swarm::poll(swarm2)),
-    )
-    .await
-    .expect_err("timeout to be reached");
+    let result = swarm.behaviour_mut().publish(topic, data);
+
+    assert_matches!(result, Ok(_), "publish to topic should succeed");
 }
 
-async fn wait_for_start_listening(
-    publisher: &mut Swarm<Behaviour>,
-    subscriber: &mut Swarm<Behaviour>,
-) -> (Multiaddr, Multiaddr) {
-    tokio::join!(
-        testlib::swarm::wait_for_new_listen_addr(publisher),
-        testlib::swarm::wait_for_new_listen_addr(subscriber)
-    )
-}
-
-async fn wait_for_connection_establishment(
-    dialer: &mut Swarm<Behaviour>,
-    receiver: &mut Swarm<Behaviour>,
-) {
-    tokio::join!(
-        testlib::swarm::wait_for_connection_established(dialer),
-        testlib::swarm::wait_for_connection_established(receiver)
-    );
-}
-
+/// Wait for a message event to be received by the swarm.
+///
+/// Returns all the events received by the swarm until the message event is received.
 async fn wait_for_message(swarm: &mut Swarm<Behaviour>) -> Vec<SwarmEvent<Event, Infallible>> {
     let mut events = Vec::new();
 
@@ -81,17 +75,6 @@ async fn wait_for_message(swarm: &mut Swarm<Behaviour>) -> Vec<SwarmEvent<Event,
     events
 }
 
-async fn wait_mesh_message_propagation(
-    duration: Duration,
-    swarm1: &mut Swarm<Behaviour>,
-    swarm2: &mut Swarm<Behaviour>,
-) -> Vec<SwarmEvent<Event, Infallible>> {
-    tokio::select! {
-        _ = timeout(duration, testlib::swarm::poll(swarm1)) => panic!("timeout reached"),
-        res = wait_for_message(swarm2) => res,
-    }
-}
-
 #[tokio::test]
 async fn publish_to_topic() {
     testlib::init_logger();
@@ -107,57 +90,53 @@ async fn publish_to_topic() {
 
     //// Setup
     let mut publisher = new_test_node(&publisher_key, pubsub_config.clone());
-    publisher
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut publisher, any_memory_addr());
 
     let mut subscriber = new_test_node(&subscriber_key, pubsub_config.clone());
-    subscriber
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut subscriber, any_memory_addr());
 
     let (publisher_addr, _subscriber_addr) = timeout(
         Duration::from_secs(5),
-        wait_for_start_listening(&mut publisher, &mut subscriber),
+        testlib::swarm::wait_for_start_listening(&mut publisher, &mut subscriber),
     )
     .await
     .expect("listening to start");
 
     // Subscribe to the topic
-    publisher
-        .behaviour_mut()
-        .subscribe(&pubsub_topic)
-        .expect("subscribe to topic");
-    subscriber
-        .behaviour_mut()
-        .subscribe(&pubsub_topic)
-        .expect("subscribe to topic");
+    should_subscribe_to_topic(&mut publisher, &pubsub_topic);
+    should_subscribe_to_topic(&mut subscriber, &pubsub_topic);
 
     // Dial the publisher node
-    subscriber.dial(publisher_addr).expect("dial to succeed");
+    testlib::swarm::should_dial_address(&mut subscriber, publisher_addr);
     timeout(
         Duration::from_secs(5),
-        wait_for_connection_establishment(&mut subscriber, &mut publisher),
+        testlib::swarm::wait_for_connection_establishment(&mut subscriber, &mut publisher),
     )
     .await
     .expect("subscriber to connect to publisher");
 
     // Wait for pub-sub network to establish
-    poll_mesh(Duration::from_millis(50), &mut publisher, &mut subscriber).await;
+    testlib::swarm::poll_mesh(Duration::from_millis(50), &mut publisher, &mut subscriber).await;
 
     //// When
-    publisher
-        .behaviour_mut()
-        .publish(&pubsub_topic, message_payload.clone())
-        .expect("publish the message");
+    should_publish_to_topic(&mut publisher, &pubsub_topic, message_payload.clone());
 
-    let sub_events =
-        wait_mesh_message_propagation(Duration::from_millis(50), &mut publisher, &mut subscriber)
-            .await;
+    let (_, sub_events) = testlib::swarm::poll_mesh_and_collect_events(
+        Duration::from_millis(50),
+        &mut publisher,
+        &mut subscriber,
+    )
+    .await;
 
     //// Then
-    let last_event = sub_events.last().expect("at least one event");
-    assert_matches!(last_event, SwarmEvent::Behaviour(Event::Message { message, .. }) => {
+    let messages = sub_events
+        .into_iter()
+        .filter(|ev| matches!(ev, SwarmEvent::Behaviour(Event::Message { .. })))
+        .collect::<Vec<_>>();
+    assert_eq!(messages.len(), 1);
+
+    let last_message = messages.last().expect("at least one event");
+    assert_matches!(last_message, SwarmEvent::Behaviour(Event::Message { message, .. }) => {
         assert!(message.sequence_number().is_some());
         assert!(message.source().is_none());
         assert_eq!(message.topic_str(), pubsub_topic.hash().as_str());
