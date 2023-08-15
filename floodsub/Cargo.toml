@@ -8,11 +8,11 @@ asynchronous-codec = "0.6"
 base64 = "0.21.2"
 bytes = { workspace = true }
 either = "1.9"
-futures = "0.3.28"
+futures = { workspace = true }
 hex_fmt = "0.3.0"
 instant = "0.1.12"
-libp2p = { version = "0.52.1", features = ["macros"] }
-log = "0.4.19"
+libp2p = { workspace = true, features = ["macros"] }
+log = "0.4"
 prometheus-client = "0.21.2"
 prost = "0.11.9"
 rand = "0.8"
