@@ -8,6 +8,7 @@ pub mod transport;
 /// Initialize the logger for tests.
 pub fn init_logger() {
     let _ = pretty_env_logger::formatted_builder()
+        .parse_default_env()
         .is_test(true)
         .try_init();
 }
