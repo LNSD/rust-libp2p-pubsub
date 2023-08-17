@@ -13,8 +13,7 @@ use libp2p::gossipsub::{
     ValidationMode as Libp2pGossipsubValidationMode,
 };
 use libp2p::identity::{Keypair, PeerId};
-use libp2p::swarm::{NetworkBehaviour, SwarmBuilder, SwarmEvent};
-use libp2p::{Multiaddr, Swarm};
+use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
 use rand::Rng;
 use tokio::time::timeout;
 use void::Void;
@@ -42,7 +41,7 @@ fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
 }
 
-fn new_libp2p_gossipsus_node(
+fn new_libp2p_gossipsub_node(
     keypair: &Keypair,
     privacy: Libp2pGossipsubMessageAuthenticity,
     config: Libp2pGossipsubConfig,
@@ -52,54 +51,6 @@ fn new_libp2p_gossipsus_node(
     let behaviour =
         Libp2pGossipsubBehaviour::new(privacy, config).expect("valid gossipsub configuration");
     SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
-}
-
-async fn poll_nodes<
-    B1: NetworkBehaviour<ToSwarm = E1>,
-    E1: Debug,
-    B2: NetworkBehaviour<ToSwarm = E2>,
-    E2: Debug,
->(
-    duration: Duration,
-    swarm1: &mut Swarm<B1>,
-    swarm2: &mut Swarm<B2>,
-) {
-    timeout(
-        duration,
-        futures::future::join(testlib::swarm::poll(swarm1), testlib::swarm::poll(swarm2)),
-    )
-    .await
-    .expect_err("timeout to be reached");
-}
-
-async fn wait_for_start_listening<
-    B1: NetworkBehaviour<ToSwarm = E1>,
-    E1: Debug,
-    B2: NetworkBehaviour<ToSwarm = E2>,
-    E2: Debug,
->(
-    publisher: &mut Swarm<B1>,
-    subscriber: &mut Swarm<B2>,
-) -> (Multiaddr, Multiaddr) {
-    tokio::join!(
-        testlib::swarm::wait_for_new_listen_addr(publisher),
-        testlib::swarm::wait_for_new_listen_addr(subscriber)
-    )
-}
-
-async fn wait_for_connection_establishment<
-    B1: NetworkBehaviour<ToSwarm = E1>,
-    E1: Debug,
-    B2: NetworkBehaviour<ToSwarm = E2>,
-    E2: Debug,
->(
-    dialer: &mut Swarm<B1>,
-    receiver: &mut Swarm<B2>,
-) {
-    tokio::join!(
-        testlib::swarm::wait_for_connection_established(dialer),
-        testlib::swarm::wait_for_connection_established(receiver)
-    );
 }
 
 async fn wait_for_message_event(
@@ -192,22 +143,18 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
         .expect("valid gossipsub configuration");
 
     let mut publisher = new_test_node(&publisher_key, publisher_config.clone());
-    publisher
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut publisher, any_memory_addr());
 
-    let mut libp2p_subscriber = new_libp2p_gossipsus_node(
+    let mut libp2p_subscriber = new_libp2p_gossipsub_node(
         &subscriber_key,
         Libp2pGossipsubMessageAuthenticity::Anonymous,
         subscriber_config.clone(),
     );
-    libp2p_subscriber
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut libp2p_subscriber, any_memory_addr());
 
     let (_publisher_addr, subscriber_addr) = timeout(
         Duration::from_secs(5),
-        wait_for_start_listening(&mut publisher, &mut libp2p_subscriber),
+        testlib::swarm::wait_for_start_listening(&mut publisher, &mut libp2p_subscriber),
     )
     .await
     .expect("listening to start");
@@ -223,15 +170,15 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
         .expect("subscribe to topic");
 
     // Dial the publisher node
-    publisher.dial(subscriber_addr).expect("dial to succeed");
+    testlib::swarm::should_dial_address(&mut publisher, subscriber_addr);
     timeout(
         Duration::from_secs(5),
-        wait_for_connection_establishment(&mut publisher, &mut libp2p_subscriber),
+        testlib::swarm::wait_for_connection_establishment(&mut publisher, &mut libp2p_subscriber),
     )
     .await
     .expect("publisher to dial the subscriber");
 
-    poll_nodes(
+    testlib::swarm::poll_mesh(
         Duration::from_millis(50),
         &mut publisher,
         &mut libp2p_subscriber,
@@ -286,22 +233,19 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
         .expect("valid gossipsub configuration");
     let subscriber_config = Config::default();
 
-    let mut libp2p_publisher = new_libp2p_gossipsus_node(
+    let mut libp2p_publisher = new_libp2p_gossipsub_node(
         &subscriber_key,
         Libp2pGossipsubMessageAuthenticity::Anonymous,
         libp2p_publisher_config.clone(),
     );
-    libp2p_publisher
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut libp2p_publisher, any_memory_addr());
+
     let mut subscriber = new_test_node(&publisher_key, subscriber_config.clone());
-    subscriber
-        .listen_on(any_memory_addr())
-        .expect("listen on address");
+    testlib::swarm::should_listen_on_address(&mut subscriber, any_memory_addr());
 
     let (libp2p_publisher_addr, _subscriber_addr) = timeout(
         Duration::from_secs(5),
-        wait_for_start_listening(&mut libp2p_publisher, &mut subscriber),
+        testlib::swarm::wait_for_start_listening(&mut libp2p_publisher, &mut subscriber),
     )
     .await
     .expect("listening to start");
@@ -317,17 +261,15 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
         .expect("subscribe to topic");
 
     // Dial the publisher node
-    subscriber
-        .dial(libp2p_publisher_addr)
-        .expect("dial to succeed");
+    testlib::swarm::should_dial_address(&mut subscriber, libp2p_publisher_addr);
     timeout(
         Duration::from_secs(5),
-        wait_for_connection_establishment(&mut subscriber, &mut libp2p_publisher),
+        testlib::swarm::wait_for_connection_establishment(&mut subscriber, &mut libp2p_publisher),
     )
     .await
     .expect("publisher to dial the subscriber");
 
-    poll_nodes(
+    testlib::swarm::poll_mesh(
         Duration::from_millis(50),
         &mut subscriber,
         &mut libp2p_publisher,
