@@ -16,9 +16,10 @@ type NetworkBehaviourConnectionHandlerError<B> =
 
 /// Poll the swarm to make the async runtime progress.
 pub async fn poll<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(swarm: &mut Swarm<B>) {
+    let swarm_peer_id = *swarm.local_peer_id();
     loop {
         let event = swarm.select_next_some().await;
-        log::error!("Event: {:?}", event);
+        log::trace!("PeerId: {} > Event emitted: {:?}", swarm_peer_id, event);
     }
 }
 
@@ -81,9 +82,10 @@ pub fn should_listen_on_address<B: NetworkBehaviour>(
 pub async fn wait_for_new_listen_addr<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) -> Multiaddr {
+    let swarm_peer_id = *swarm.local_peer_id();
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event: {:?}", event);
+        log::trace!("PeerId: {} > Event emitted: {:?}", swarm_peer_id, event);
         if let SwarmEvent::NewListenAddr { address, .. } = event {
             return address;
         }
@@ -101,9 +103,10 @@ pub fn should_dial_address<B: NetworkBehaviour>(swarm: &mut Swarm<B>, addr: Mult
 pub async fn wait_for_incoming_connection<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) {
+    let swarm_peer_id = *swarm.local_peer_id();
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event: {:?}", event);
+        log::trace!("PeerId: {} > Event emitted: {:?}", swarm_peer_id, event);
         if matches!(event, SwarmEvent::IncomingConnection { .. }) {
             break;
         }
@@ -112,9 +115,10 @@ pub async fn wait_for_incoming_connection<B: NetworkBehaviour<ToSwarm = E>, E: D
 
 /// Wait the swarm for the [`SwarmEvent::Dialing`] event.
 pub async fn wait_for_dialing<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(swarm: &mut Swarm<B>) {
+    let swarm_peer_id = *swarm.local_peer_id();
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event: {:?}", event);
+        log::trace!("PeerId: {} > Event emitted: {:?}", swarm_peer_id, event);
         if matches!(event, SwarmEvent::Dialing { .. }) {
             break;
         }
@@ -125,9 +129,10 @@ pub async fn wait_for_dialing<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(swarm:
 pub async fn wait_for_connection_established<B: NetworkBehaviour<ToSwarm = E>, E: Debug>(
     swarm: &mut Swarm<B>,
 ) {
+    let swarm_peer_id = *swarm.local_peer_id();
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event: {:?}", event);
+        log::trace!("PeerId: {} > Event emitted: {:?}", swarm_peer_id, event);
         if matches!(event, SwarmEvent::ConnectionEstablished { .. }) {
             break;
         }
