@@ -57,8 +57,8 @@ jobs:
         with:
           crate: cargo-nextest
 
-      - name: Build
-        run: cargo build
+      - name: Cargo check
+        run: cargo check
 
       - name: Run unit tests
         run: cargo llvm-cov nextest r --lib --lcov --output-path ut-lcov.info
