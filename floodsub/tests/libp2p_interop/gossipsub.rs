@@ -19,11 +19,10 @@ use rand::Rng;
 use tokio::time::timeout;
 use void::Void;
 
+use common_test as testlib;
+use common_test::any_memory_addr;
+use common_test::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 use floodsub::{Behaviour, Config, Event, IdentTopic};
-
-use crate::testlib;
-use crate::testlib::any_memory_addr;
-use crate::testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 fn new_test_topic() -> IdentTopic {
     IdentTopic::new(format!(

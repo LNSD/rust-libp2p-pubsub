@@ -5,10 +5,9 @@ use libp2p::swarm::{Swarm, SwarmBuilder};
 use libp2p::Multiaddr;
 use tokio::time::timeout;
 
+use common_test as testlib;
 use floodsub::{Behaviour, Config};
-
-use crate::testlib;
-use crate::testlib::any_memory_addr;
+use testlib::any_memory_addr;
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
