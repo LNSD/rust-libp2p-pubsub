@@ -13,7 +13,7 @@ This is an alternative implementation of [rust-libp2p](https://github.com/libp2p
 
 To build this project you need the following:
 
-- Rust 1.65+
+- Rust 1.71.1+
 - [Buf CLI](https://docs.buf.build/installation)
 - [Protobuf Compiler (protoc)](https://grpc.io/docs/protoc-installation/)
 - [Protoc prost plugins (protoc-gen-prost)](https://github.com/neoeinstein/protoc-gen-prost):
