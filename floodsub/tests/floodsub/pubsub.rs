@@ -10,11 +10,10 @@ use libp2p::Swarm;
 use rand::Rng;
 use tokio::time::timeout;
 
+use common_test as testlib;
+use common_test::any_memory_addr;
+use common_test::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 use floodsub::{Behaviour, Config, Event, Hasher, IdentTopic, Topic};
-
-use crate::testlib;
-use crate::testlib::any_memory_addr;
-use crate::testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 /// Create a new test topic with a random name.
 fn new_test_topic() -> IdentTopic {
