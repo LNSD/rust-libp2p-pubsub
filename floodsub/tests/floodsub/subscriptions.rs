@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -6,6 +8,7 @@ use libp2p::swarm::SwarmBuilder;
 use libp2p::Swarm;
 use rand::Rng;
 use tokio::time::timeout;
+use tracing_futures::Instrument;
 
 use common_test as testlib;
 use common_test::any_memory_addr;
@@ -21,9 +24,17 @@ fn new_test_topic() -> IdentTopic {
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair).expect("create the transport");
+    let transport = testlib::test_transport(keypair);
     let behaviour = Behaviour::new(config);
-    SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
+    SwarmBuilder::with_executor(
+        transport,
+        behaviour,
+        peer_id,
+        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
+            tokio::spawn(fut.in_current_span());
+        },
+    )
+    .build()
 }
 
 #[tokio::test]

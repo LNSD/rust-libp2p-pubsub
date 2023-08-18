@@ -114,7 +114,7 @@ impl ConnectionHandler for DisabledHandler {
     }
 
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
-        log::debug!("Ignoring incoming message because handler is disabled: {event:?}")
+        tracing::debug!("Ignoring incoming message because handler is disabled: {event:?}")
     }
 
     fn on_connection_event(
@@ -209,7 +209,7 @@ impl SimpleHandler {
         let stream = Framed::new(socket, codec);
 
         // new inbound substream. Replace the current one, if it exists.
-        log::trace!("new inbound substream request");
+        tracing::trace!("new inbound substream request");
         self.inbound_substream = Some(InboundSubstreamState::WaitingInput(stream));
     }
 
@@ -305,7 +305,7 @@ impl ConnectionHandler for SimpleHandler {
                             ));
                         }
                         Poll::Ready(Some(Err(error))) => {
-                            log::debug!("Failed to read from inbound stream: {error}");
+                            tracing::debug!("Failed to read from inbound stream: {error}");
                             // Close this side of the stream. If the
                             // peer is still around, they will re-establish their
                             // outbound stream i.e. our inbound stream.
@@ -314,7 +314,7 @@ impl ConnectionHandler for SimpleHandler {
                         }
                         // peer closed the stream
                         Poll::Ready(None) => {
-                            log::debug!("Inbound stream closed by remote");
+                            tracing::debug!("Inbound stream closed by remote");
                             self.inbound_substream =
                                 Some(InboundSubstreamState::Closing(substream));
                         }
@@ -332,7 +332,7 @@ impl ConnectionHandler for SimpleHandler {
                                 // Don't close the connection but just drop the inbound substream.
                                 // In case the remote has more to send, they will open up a new
                                 // substream.
-                                log::debug!("Inbound substream error while closing: {e}");
+                                tracing::debug!("Inbound substream error while closing: {e}");
                             }
                             self.inbound_substream = None;
                             break;
@@ -382,14 +382,16 @@ impl ConnectionHandler for SimpleHandler {
                                         Some(OutboundSubstreamState::PendingFlush(substream))
                                 }
                                 Err(e) => {
-                                    log::debug!("Failed to send message on outbound stream: {e}");
+                                    tracing::debug!(
+                                        "Failed to send message on outbound stream: {e}"
+                                    );
                                     self.outbound_substream = None;
                                     break;
                                 }
                             }
                         }
                         Poll::Ready(Err(e)) => {
-                            log::debug!("Failed to send message on outbound stream: {e}");
+                            tracing::debug!("Failed to send message on outbound stream: {e}");
                             self.outbound_substream = None;
                             break;
                         }
@@ -408,7 +410,7 @@ impl ConnectionHandler for SimpleHandler {
                                 Some(OutboundSubstreamState::WaitingOutput(substream))
                         }
                         Poll::Ready(Err(e)) => {
-                            log::debug!("Failed to flush outbound stream: {e}");
+                            tracing::debug!("Failed to flush outbound stream: {e}");
                             self.outbound_substream = None;
                             break;
                         }
@@ -470,13 +472,13 @@ impl ConnectionHandler for SimpleHandler {
                 error: StreamUpgradeError::Timeout,
                 ..
             }) => {
-                log::debug!("Dial upgrade error: Protocol negotiation timeout");
+                tracing::debug!("Dial upgrade error: Protocol negotiation timeout");
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 error: StreamUpgradeError::Io(e),
                 ..
             }) => {
-                log::debug!("Protocol negotiation failed: {e}")
+                tracing::debug!("Protocol negotiation failed: {e}")
             }
             _ => {}
         }
@@ -596,7 +598,9 @@ impl ConnectionHandler for Handler {
             self.inbound_substream_attempts += 1;
 
             if self.inbound_substream_attempts >= MAX_SUBSTREAM_ATTEMPTS {
-                log::warn!("The maximum number of inbound substreams attempts has been exceeded");
+                tracing::warn!(
+                    "The maximum number of inbound substreams attempts has been exceeded"
+                );
                 self.inner = HandlerState::Disabled(DisabledHandler::with_reason(
                     DisabledHandlerReason::MaxSubstreamAttempts,
                 ));
@@ -608,7 +612,9 @@ impl ConnectionHandler for Handler {
             self.outbound_substream_attempts += 1;
 
             if self.outbound_substream_attempts >= MAX_SUBSTREAM_ATTEMPTS {
-                log::warn!("The maximum number of outbound substream attempts has been exceeded");
+                tracing::warn!(
+                    "The maximum number of outbound substream attempts has been exceeded"
+                );
                 self.inner = HandlerState::Disabled(DisabledHandler::with_reason(
                     DisabledHandlerReason::MaxSubstreamAttempts,
                 ));
@@ -622,7 +628,7 @@ impl ConnectionHandler for Handler {
         }) = event
         {
             // The protocol is not supported
-            log::debug!("The remote peer does not support the protocol on this connection");
+            tracing::debug!("The remote peer does not support the protocol on this connection");
             self.inner = HandlerState::Disabled(DisabledHandler::with_reason(
                 DisabledHandlerReason::ProtocolUnsupported,
             ));

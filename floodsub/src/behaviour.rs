@@ -136,7 +136,7 @@ impl Behaviour {
     /// at least one active connection to the network, otherwise the subscription will fail with a
     /// [`SubscriptionError::SubscriptionPublishFailed`].
     pub fn subscribe<H: Hasher>(&mut self, topic: &Topic<H>) -> Result<bool, SubscriptionError> {
-        log::debug!("Subscribing to topic {topic}");
+        tracing::debug!("Subscribing to topic {topic}");
 
         let topic = topic.hash();
 
@@ -160,7 +160,7 @@ impl Behaviour {
 
         for peer in self.connections.active_peers() {
             if let Err(err) = self.send_rpc_frame(&peer, frame.clone()) {
-                log::debug!("Failed to send topic {topic} subscription to peer {peer}: {err}");
+                tracing::debug!("Failed to send topic {topic} subscription to peer {peer}: {err}");
             }
         }
 
@@ -172,7 +172,7 @@ impl Behaviour {
     /// Returns `Ok(true)` if the unsubscription was successful, `Ok(false)` if we were not
     /// subscribed to the topic.
     pub fn unsubscribe<H: Hasher>(&mut self, topic: &Topic<H>) -> Result<bool, SubscriptionError> {
-        log::debug!("Unsubscribing from topic {topic}");
+        tracing::debug!("Unsubscribing from topic {topic}");
 
         let topic = topic.hash();
 
@@ -196,7 +196,9 @@ impl Behaviour {
 
         for peer in self.connections.active_peers() {
             if let Err(err) = self.send_rpc_frame(&peer, frame.clone()) {
-                log::debug!("Failed to send topic {topic} unsubscription to peer {peer}: {err}");
+                tracing::debug!(
+                    "Failed to send topic {topic} unsubscription to peer {peer}: {err}"
+                );
             }
         }
 
@@ -209,7 +211,7 @@ impl Behaviour {
         topic: &Topic<H>,
         data: impl Into<Vec<u8>>,
     ) -> Result<(), PublishError> {
-        log::debug!("Publishing message to topic {topic}");
+        tracing::debug!("Publishing message to topic {topic}");
 
         let topic = topic.hash();
 
@@ -245,7 +247,7 @@ impl Behaviour {
         let frame = Frame::new_with_messages(vec![message]);
         for peer in propagation_peers {
             if let Err(err) = self.send_rpc_frame(&peer, frame.clone()) {
-                log::debug!("Failed to send message to peer {peer}: {err}");
+                tracing::debug!("Failed to send message to peer {peer}: {err}");
             }
         }
 
@@ -271,7 +273,7 @@ impl Behaviour {
         // If this is the first connection with the peer, send our subscriptions to the peer.
         // The peer will be added to the router when the subscriptions are received.
         if connections_count == 1 {
-            log::debug!("Connection established with {}", event.peer_id);
+            tracing::debug!("Connection established with {}", event.peer_id);
 
             let subscriptions = self
                 .router
@@ -281,7 +283,7 @@ impl Behaviour {
             let frame = Frame::new_with_subscriptions(subscriptions);
 
             if let Err(err) = self.send_rpc_frame(&event.peer_id, frame) {
-                log::warn!("Failed to send subscriptions to {}: {}", event.peer_id, err);
+                tracing::warn!("Failed to send subscriptions to {}: {}", event.peer_id, err);
             }
         }
     }
@@ -303,7 +305,7 @@ impl Behaviour {
 
         // If there are no more connections with the peer, remove the peer from the router.
         if peer_connections == 0 {
-            log::debug!("No connections remaining for peer {}", event.peer_id);
+            tracing::debug!("No connections remaining for peer {}", event.peer_id);
 
             self.router.remove_peer(&event.peer_id);
         }
@@ -349,14 +351,14 @@ impl Behaviour {
     fn on_received_rpc_frame(&mut self, src: &PeerId, frame: RpcProto) {
         // First: Validate the RPC frame.
         if let Err(err) = validate_rpc_proto(&frame) {
-            log::trace!("Received invalid RPC frame from {}: {}", src, err);
+            tracing::trace!("Received invalid RPC frame from {}: {}", src, err);
             return;
         }
 
         // Second: Validate, sanitize and convert protobuf into messages.
         let messages = frame.publish.into_iter().filter_map(|msg| {
             if let Err(err) = validate_message_proto(&msg) {
-                log::trace!("Received invalid message from {}: {}", src, err);
+                tracing::trace!("Received invalid message from {}: {}", src, err);
                 return None;
             }
 
@@ -368,7 +370,7 @@ impl Behaviour {
         // Third: Validate, sanitize and convert protobuf  into subscription actions.
         let subscriptions = frame.subscriptions.into_iter().filter_map(|sub| {
             if let Err(err) = validate_subopts_proto(&sub) {
-                log::trace!("Received invalid subscription from {}: {}", src, err);
+                tracing::trace!("Received invalid subscription from {}: {}", src, err);
                 return None;
             }
 
@@ -401,7 +403,7 @@ impl Behaviour {
 
         // Emit the messages to the application.
         for msg in messages.iter() {
-            log::trace!("Received message from {src} to topic {}", msg.topic_str());
+            tracing::trace!("Received message from {src} to topic {}", msg.topic_str());
             self.emit_behaviour_event(Event::Message {
                 source: *src,
                 topic: msg.topic(),
@@ -434,7 +436,7 @@ impl Behaviour {
 
         for (peer, frame) in peer_frames {
             if let Err(err) = self.send_rpc_frame(&peer, frame) {
-                log::debug!("Failed to send RPC frame to {}: {}", peer, err);
+                tracing::debug!("Failed to send RPC frame to {}: {}", peer, err);
             }
         }
     }
@@ -539,7 +541,9 @@ impl NetworkBehaviour for Behaviour {
         match event {
             HandlerEvent::FrameReceived(frame) => self.on_received_rpc_frame(&src, frame),
             HandlerEvent::Disabled(reason) => {
-                log::debug!("Connection handler {connection:?} for peer {src} disabled: {reason}");
+                tracing::debug!(
+                    "Connection handler {connection:?} for peer {src} disabled: {reason}"
+                );
             }
         }
     }
