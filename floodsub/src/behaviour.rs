@@ -156,7 +156,7 @@ impl Behaviour {
 
         // Publish the subscription to the network.
         let subscription = SubscriptionAction::subscribe(topic.clone());
-        let frame = Frame::new_with_subscriptions(vec![subscription]);
+        let frame = Frame::new_with_subscriptions([subscription]);
 
         for peer in self.connections.active_peers() {
             if let Err(err) = self.send_rpc_frame(&peer, frame.clone()) {
@@ -192,7 +192,7 @@ impl Behaviour {
 
         // Publish the subscription to the network.
         let subscription = SubscriptionAction::unsubscribe(topic.clone());
-        let frame = Frame::new_with_subscriptions(vec![subscription]);
+        let frame = Frame::new_with_subscriptions([subscription]);
 
         for peer in self.connections.active_peers() {
             if let Err(err) = self.send_rpc_frame(&peer, frame.clone()) {
@@ -270,8 +270,9 @@ impl Behaviour {
             "Peer connections count should match the other established connections plus one"
         );
 
-        // If this is the first connection with the peer, send our subscriptions to the peer.
-        // The peer will be added to the router when the subscriptions are received.
+        // Send our subscriptions to the peer, if this is the first connection with the peer and we
+        // are subscribed to any topics. The peer will be added to the router when his subscriptions
+        // are received.
         if connections_count == 1 {
             tracing::debug!("Connection established with {}", event.peer_id);
 
@@ -279,11 +280,17 @@ impl Behaviour {
                 .router
                 .subscriptions()
                 .cloned()
-                .map(SubscriptionAction::subscribe);
-            let frame = Frame::new_with_subscriptions(subscriptions);
+                .map(SubscriptionAction::subscribe)
+                .collect::<Vec<_>>();
 
-            if let Err(err) = self.send_rpc_frame(&event.peer_id, frame) {
-                tracing::warn!("Failed to send subscriptions to {}: {}", event.peer_id, err);
+            // Avoid sending an empty subscriptions frame.
+            if !subscriptions.is_empty() {
+                tracing::debug!("Sending subscriptions to {}", event.peer_id);
+
+                let frame = Frame::new_with_subscriptions(subscriptions);
+                if let Err(err) = self.send_rpc_frame(&event.peer_id, frame) {
+                    tracing::warn!("Failed to send subscriptions to {}: {}", event.peer_id, err);
+                }
             }
         }
     }
