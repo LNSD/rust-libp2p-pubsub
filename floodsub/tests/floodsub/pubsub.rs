@@ -1,4 +1,6 @@
 use std::convert::Infallible;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -9,6 +11,7 @@ use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::Swarm;
 use rand::Rng;
 use tokio::time::timeout;
+use tracing_futures::Instrument;
 
 use common_test as testlib;
 use common_test::any_memory_addr;
@@ -26,12 +29,21 @@ fn new_test_topic() -> IdentTopic {
 /// Create a new test node with the given keypair and config.
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair).expect("create the transport");
+    let transport = testlib::test_transport(keypair);
     let behaviour = Behaviour::new(config);
-    SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
+    SwarmBuilder::with_executor(
+        transport,
+        behaviour,
+        peer_id,
+        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
+            tokio::spawn(fut.in_current_span());
+        },
+    )
+    .build()
 }
 
 /// Subscribe to a topic and assert that the subscription is successful.
+#[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]
 fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: &Topic<H>) -> bool {
     let result = swarm.behaviour_mut().subscribe(topic);
 
@@ -43,6 +55,7 @@ fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: &To
 /// Publish to a topic and assert that the publish is successful.
 ///
 /// Returns the `MessageId` of the published message.
+#[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]
 fn should_publish_to_topic<H: Hasher>(
     swarm: &mut Swarm<Behaviour>,
     topic: &Topic<H>,

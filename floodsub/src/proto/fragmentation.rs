@@ -52,7 +52,7 @@ pub fn fragment_rpc_message(
             if object_size + 2 > max_size {
                 // This should not be possible. All received and published messages have already
                 // been vetted to fit within the size.
-                log::error!("Individual message too large to fragment");
+                tracing::error!("Individual message too large to fragment");
                 return Err(FragmentationError::MessageTooLarge);
             }
 

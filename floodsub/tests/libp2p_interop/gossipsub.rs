@@ -1,5 +1,6 @@
 use std::convert::Infallible;
-use std::fmt::Debug;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -16,6 +17,7 @@ use libp2p::identity::{Keypair, PeerId};
 use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
 use rand::Rng;
 use tokio::time::timeout;
+use tracing_futures::Instrument;
 use void::Void;
 
 use common_test as testlib;
@@ -36,9 +38,17 @@ fn new_libp2p_topic(raw: &str) -> Libp2pGossipsubIdentTopic {
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair).expect("create the transport");
+    let transport = testlib::test_transport(keypair);
     let behaviour = Behaviour::new(config);
-    SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
+    SwarmBuilder::with_executor(
+        transport,
+        behaviour,
+        peer_id,
+        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
+            tokio::spawn(fut.in_current_span());
+        },
+    )
+    .build()
 }
 
 fn new_libp2p_gossipsub_node(
@@ -47,10 +57,18 @@ fn new_libp2p_gossipsub_node(
     config: Libp2pGossipsubConfig,
 ) -> Swarm<Libp2pGossipsubBehaviour> {
     let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair).expect("create the transport");
+    let transport = testlib::test_transport(keypair);
     let behaviour =
         Libp2pGossipsubBehaviour::new(privacy, config).expect("valid gossipsub configuration");
-    SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
+    SwarmBuilder::with_executor(
+        transport,
+        behaviour,
+        peer_id,
+        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
+            tokio::spawn(fut.in_current_span());
+        },
+    )
+    .build()
 }
 
 async fn wait_for_message_event(
@@ -60,7 +78,7 @@ async fn wait_for_message_event(
 
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event emitted: {event:?}");
+        tracing::trace!("Event emitted: {event:?}");
         events.push(event);
 
         if matches!(
@@ -81,7 +99,7 @@ async fn wait_for_libp2p_gossipsub_message_event(
 
     loop {
         let event = swarm.select_next_some().await;
-        log::trace!("Event emitted: {event:?}");
+        tracing::trace!("Event emitted: {event:?}");
         events.push(event);
 
         if matches!(

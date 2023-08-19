@@ -6,13 +6,14 @@ edition = "2021"
 [dependencies]
 asynchronous-codec = "0.6"
 base64 = "0.21.2"
-bytes = { workspace = true }
+bytes.workspace = true
+common = { path = "../common", features = ["prost_codec"] }
 either = "1.9"
-futures = { workspace = true }
+futures.workspace = true
+hashlink = "0.8.3"
 hex_fmt = "0.3.0"
 instant = "0.1.12"
 libp2p = { workspace = true, features = ["macros"] }
-log = "0.4"
 prometheus-client = "0.21.2"
 prost = "0.11.9"
 rand = "0.8"
@@ -20,15 +21,15 @@ serde = { version = "1.0", optional = true, features = ["derive"] }
 sha2 = "0.10.7"
 smallvec = "1.11.0"
 strum_macros = "0.25.2"
-thiserror = { workspace = true }
-common = { path = "../common", features = ["prost_codec"] }
-hashlink = "0.8.3"
+thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
 common-test = { path = "../common-test" }
-libp2p = { workspace = true, features = ["noise", "yamux", "secp256k1", "tokio", "gossipsub"] }
+libp2p = { workspace = true, features = ["yamux", "secp256k1", "tokio", "gossipsub"] }
 tokio.workspace = true
+tracing-futures = "0.2.5"
 void = "1.0.2"
 
 # Passing arguments to the docsrs builder in order to properly document cfg's.

@@ -9,13 +9,13 @@ quick_protobuf_codec = ["dep:quick-protobuf", "dep:asynchronous-codec", "dep:uns
 
 [dependencies]
 asynchronous-codec = { version = "0.6.2", optional = true }
-bytes = { workspace = true }
-futures = { workspace = true }
+bytes.workspace = true
+futures.workspace = true
 futures-ticker = "0.0.3"
-libp2p = { workspace = true }
+libp2p.workspace = true
 prost = { version = "0.11.9", optional = true }
 quick-protobuf = { version = "0.8", optional = true }
-thiserror = { workspace = true }
+thiserror.workspace = true
 unsigned-varint = { version = "0.7.1", features = ["asynchronous-codec"], optional = true }
 
 [dev-dependencies]

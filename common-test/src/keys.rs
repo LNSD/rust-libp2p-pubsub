@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use libp2p::identity::{secp256k1, Keypair};
 
 pub const TEST_KEYPAIR_A: &str = "dc404f7ed2d3cdb65b536e8d561255c84658e83775ee790ff46bf4d77690b0fe";
