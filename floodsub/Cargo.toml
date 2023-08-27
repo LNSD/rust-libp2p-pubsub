@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 asynchronous-codec = "0.6"
-base64 = "0.21.2"
+base64 = "0.21.3"
 bytes.workspace = true
 common = { path = "../common", features = ["prost_codec"] }
 either = "1.9"
