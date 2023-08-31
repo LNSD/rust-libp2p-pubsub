@@ -11,8 +11,9 @@ use common::ttl_cache::Cache;
 
 use crate::framing::Message;
 use crate::message_id::{default_message_id_fn, MessageId, MessageIdFn};
-use crate::services::message_cache::MessageCacheInEvent;
 use crate::topic::TopicHash;
+
+use super::events::{ServiceIn, SubscriptionEvent};
 
 pub struct MessageCacheService {
     /// The internal cache data structure.
@@ -63,25 +64,26 @@ impl MessageCacheService {
 }
 
 impl Service for MessageCacheService {
-    type InEvent = MessageCacheInEvent;
+    type InEvent = ServiceIn;
     type OutEvent = ();
 
     fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
         match ev {
-            MessageCacheInEvent::Subscribed {
-                message_id_fn,
-                topic,
-            } => {
-                // Register the topic's message id function
-                let message_id_fn = message_id_fn.unwrap_or(Rc::new(default_message_id_fn));
-                self.message_id_fn.insert(topic, message_id_fn);
-            }
-            MessageCacheInEvent::Unsubscribed(topic) => {
-                // Unregister the topic's message id function
-                self.message_id_fn.remove(&topic);
-            }
-            MessageCacheInEvent::MessageReceived(message)
-            | MessageCacheInEvent::MessagePublished(message) => {
+            ServiceIn::SubscriptionEvent(sub_ev) => match sub_ev {
+                SubscriptionEvent::Subscribed {
+                    message_id_fn,
+                    topic,
+                } => {
+                    // Register the topic's message id function
+                    let message_id_fn = message_id_fn.unwrap_or(Rc::new(default_message_id_fn));
+                    self.message_id_fn.insert(topic, message_id_fn);
+                }
+                SubscriptionEvent::Unsubscribed(topic) => {
+                    // Unregister the topic's message id function
+                    self.message_id_fn.remove(&topic);
+                }
+            },
+            ServiceIn::MessageReceived(message) | ServiceIn::MessagePublished(message) => {
                 let msg_id = match self.message_id_fn.get(&message.topic()) {
                     None => {
                         // Unknown topic

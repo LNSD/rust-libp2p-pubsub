@@ -1,4 +1,4 @@
-pub use events::*;
+pub use events::{ServiceIn as MessageCacheInEvent, SubscriptionEvent};
 pub use service::MessageCacheService;
 
 mod events;
