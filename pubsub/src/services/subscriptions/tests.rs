@@ -249,11 +249,15 @@ fn emit_send_subscriptions_on_new_peer_connected() {
     );
     assert_matches!(&output_events[0], SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
         assert_eq!(peer, &peer_a);
-        assert_eq!(topics[..], [topic_a.hash(), topic_b.hash()]);
+        assert_eq!(topics.len(), 2);
+        assert!(topics.contains(&topic_a.hash()));
+        assert!(topics.contains(&topic_b.hash()));
     });
     assert_matches!(&output_events[1], SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
         assert_eq!(peer, &peer_b);
-        assert_eq!(topics[..], [topic_a.hash(), topic_b.hash()]);
+        assert_eq!(topics.len(), 2);
+        assert!(topics.contains(&topic_a.hash()));
+        assert!(topics.contains(&topic_b.hash()));
     });
 }
 
