@@ -1,0 +1,170 @@
+use assert_matches::assert_matches;
+use rand::Rng;
+
+use common_test as testlib;
+use common_test::service::noop_context;
+
+use crate::services::subscriptions::{
+    SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsService,
+};
+use crate::topic::{Hasher, IdentityHash, Topic};
+
+/// Create a new random test topic.
+fn new_test_topic() -> Topic<IdentityHash> {
+    Topic::new(format!(
+        "/pubsub/2/it-pubsub-test-{}",
+        rand::thread_rng().gen::<u32>()
+    ))
+}
+
+/// Create a new subscription sequence for the given topic.
+fn new_subscribe_seq<H: Hasher>(topic: Topic<H>) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::LocalSubscriptionRequest(topic.into())]
+}
+
+/// Create a new unsubscription sequence for the given topic.
+fn new_unsubscribe_seq<H: Hasher>(
+    topic: Topic<H>,
+) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::LocalUnsubscriptionRequest(
+        topic.hash(),
+    )]
+}
+
+#[test]
+fn register_non_existing_topic_subscription() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let topic_a = new_test_topic();
+
+    //// When
+    let input_events = new_subscribe_seq(topic_a.clone());
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert state
+    assert!(
+        service.is_subscribed(&topic_a.hash()),
+        "Node should be subscribed to topic"
+    );
+    assert!(
+        service.subscriptions().contains(&topic_a.hash()),
+        "Node should be subscribed to topic"
+    );
+
+    // Assert events
+    assert_eq!(output_events.len(), 1, "Only 1 event should be emitted");
+    assert_matches!(&output_events[0], SubscriptionsOutEvent::Subscribed(sub) => {
+        assert_eq!(&sub.topic, &topic_a.hash());
+    });
+}
+
+#[test]
+fn register_existing_topic_subscription() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let topic_a = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = new_subscribe_seq(topic_a.clone());
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = new_subscribe_seq(topic_a.clone());
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert state
+    assert!(
+        service.is_subscribed(&topic_a.hash()),
+        "Node should be subscribed to topic"
+    );
+    assert!(
+        service.subscriptions().contains(&topic_a.hash()),
+        "Node should be subscribed to topic"
+    );
+
+    // Assert events
+    assert_eq!(output_events.len(), 0, "No events should be emitted");
+}
+
+#[test]
+fn unregister_non_existing_topic_subscription() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    // Simulate a previous subscription to Topic A
+    let input_events = new_subscribe_seq(topic_a.clone());
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = new_unsubscribe_seq(topic_b.clone());
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert state
+    assert!(
+        service.subscriptions().contains(&topic_a.hash()),
+        "Node should be subscribed to topic A"
+    );
+    assert!(
+        !service.subscriptions().contains(&topic_b.hash()),
+        "Node should not be subscribed to topic B"
+    );
+
+    // Assert events
+    assert_eq!(output_events.len(), 0, "No events should be emitted");
+}
+
+#[test]
+fn unregister_existing_topic_subscription() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = itertools::chain!(
+        new_subscribe_seq(topic_a.clone()),
+        new_subscribe_seq(topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = new_unsubscribe_seq(topic_a.clone());
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert state
+    assert!(
+        !service.subscriptions().contains(&topic_a.hash()),
+        "Node should not be subscribed to Topic A"
+    );
+    assert!(
+        service.subscriptions().contains(&topic_b.hash()),
+        "Node should be subscribed to Topic B"
+    );
+
+    // Assert events
+    assert_eq!(output_events.len(), 1, "Only 1 event should be emitted");
+    assert_matches!(&output_events[0], SubscriptionsOutEvent::Unsubscribed(topic) => {
+        assert_eq!(topic, &topic_a.hash());
+    });
+}

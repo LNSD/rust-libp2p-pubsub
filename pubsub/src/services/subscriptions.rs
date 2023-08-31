@@ -5,3 +5,5 @@ pub use service::SubscriptionsService;
 
 mod events;
 mod service;
+#[cfg(test)]
+mod tests;
