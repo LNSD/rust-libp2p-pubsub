@@ -28,6 +28,21 @@ where
     }
 }
 
+/// Poll the node (swarm) for a given period of time.
+#[tracing::instrument(skip_all)]
+pub async fn poll_node<B, E>(duration: Duration, swarm: &mut Swarm<B>)
+where
+    B: NetworkBehaviour<ToSwarm = E>,
+    E: Debug,
+{
+    loop {
+        tokio::select! {
+            _ = tokio::time::sleep(duration) => break,
+            _ = poll(swarm) => {},
+        }
+    }
+}
+
 /// Poll the different swarms for a given period of time.
 #[tracing::instrument(skip_all)]
 pub async fn poll_mesh<B1, E1, B2, E2>(
