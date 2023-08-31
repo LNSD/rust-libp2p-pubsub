@@ -2,6 +2,7 @@
 members = [
     "common",
     "common-test",
+    "pubsub",
     "floodsub",
 ]
 
