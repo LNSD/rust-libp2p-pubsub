@@ -26,16 +26,14 @@ fn new_test_peer_id() -> PeerId {
 
 /// Create a new subscription sequence for the given topic.
 fn new_subscribe_seq<H: Hasher>(topic: Topic<H>) -> impl IntoIterator<Item = SubscriptionsInEvent> {
-    [SubscriptionsInEvent::LocalSubscriptionRequest(topic.into())]
+    [SubscriptionsInEvent::SubscriptionRequest(topic.into())]
 }
 
 /// Create a new unsubscription sequence for the given topic.
 fn new_unsubscribe_seq<H: Hasher>(
     topic: Topic<H>,
 ) -> impl IntoIterator<Item = SubscriptionsInEvent> {
-    [SubscriptionsInEvent::LocalUnsubscriptionRequest(
-        topic.hash(),
-    )]
+    [SubscriptionsInEvent::UnsubscriptionRequest(topic.hash())]
 }
 
 /// Create a new peer connection event sequence for the given peer.

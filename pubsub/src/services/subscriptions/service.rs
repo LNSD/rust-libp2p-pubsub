@@ -102,14 +102,14 @@ impl Service for SubscriptionsService {
 
     fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
         match ev {
-            ServiceIn::LocalSubscriptionRequest(sub) => {
+            ServiceIn::SubscriptionRequest(sub) => {
                 // Emit a [`SubscriptionsOutEvent::Subscribed`] event if the node was not already
                 // subscribed to the topic.
                 if self.add_local_subscription(sub.topic.clone()) {
                     return Some(ServiceOut::Subscribed(sub));
                 }
             }
-            ServiceIn::LocalUnsubscriptionRequest(topic) => {
+            ServiceIn::UnsubscriptionRequest(topic) => {
                 // Emit a [`SubscriptionsOutEvent::Unsubscribed`] event if the node was subscribed to the
                 // topic.
                 if self.remove_local_subscription(topic.clone()) {

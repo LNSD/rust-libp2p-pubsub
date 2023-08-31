@@ -10,11 +10,11 @@ pub enum ServiceIn {
     /// A local subscription request.
     ///
     /// This event is emitted when the pub-sub network behaviour [`subscribe`] method is called.
-    LocalSubscriptionRequest(Subscription),
+    SubscriptionRequest(Subscription),
     /// A local unsubscription request.
     ///
     /// This event is emitted when the pub-sub network behaviour [`unsubscribe`] method is called.
-    LocalUnsubscriptionRequest(TopicHash),
+    UnsubscriptionRequest(TopicHash),
     /// A peer subscription request received.
     PeerSubscriptionRequest {
         /// Peer that sent the subscription request.
