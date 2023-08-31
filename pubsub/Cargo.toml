@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+base64 = "0.21.3"
+bytes.workspace = true
+libp2p.workspace = true
 prost.workspace = true
+sha2 = "0.10.7"
+thiserror.workspace = true
