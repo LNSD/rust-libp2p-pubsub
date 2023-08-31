@@ -4,8 +4,9 @@ use crate::framing::SubscriptionAction;
 use crate::subscription::Subscription;
 use crate::topic::TopicHash;
 
+/// Events consumed by the [`SubscriptionsService`].
 #[derive(Debug, Clone)]
-pub enum SubscriptionsInEvent {
+pub enum ServiceIn {
     /// A local subscription request.
     ///
     /// This event is emitted when the pub-sub network behaviour [`subscribe`] method is called.
@@ -21,14 +22,29 @@ pub enum SubscriptionsInEvent {
         /// Subscription action.
         action: SubscriptionAction,
     },
+    /// A peer connection event.
+    PeerConnectionEvent(PeerConnectionEvent),
+}
+
+impl ServiceIn {
+    /// Builds a `ServiceIn::PeerConnectionEvent` event.
+    pub fn from_peer_connection_event(ev: impl Into<PeerConnectionEvent>) -> Self {
+        ServiceIn::PeerConnectionEvent(ev.into())
+    }
+}
+
+/// Peer connection events consumed by the [`SubscriptionsService`].
+#[derive(Debug, Clone)]
+pub enum PeerConnectionEvent {
     /// New peer connected.
     NewPeerConnected(PeerId),
     /// Peer disconnected.
     PeerDisconnected(PeerId),
 }
 
+/// Events emitted by the [`SubscriptionsService`].
 #[derive(Debug, Clone)]
-pub enum SubscriptionsOutEvent {
+pub enum ServiceOut {
     /// New local subscription.
     ///
     /// This event is emitted when the node subscribes to a topic. This will emit one subscription
