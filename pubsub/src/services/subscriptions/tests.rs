@@ -5,6 +5,7 @@ use rand::Rng;
 use common_test as testlib;
 use common_test::service::noop_context;
 
+use crate::framing::SubscriptionAction;
 use crate::services::subscriptions::{
     PeerConnectionEvent, SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsService,
 };
@@ -35,6 +36,42 @@ fn new_unsubscribe_seq<H: Hasher>(
     [SubscriptionsInEvent::LocalUnsubscriptionRequest(
         topic.hash(),
     )]
+}
+
+/// Create a new peer connection event sequence for the given peer.
+fn new_peer_connected_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::PeerConnectionEvent(
+        PeerConnectionEvent::NewPeerConnected(peer),
+    )]
+}
+
+/// Create a new peer disconnection event sequence for the given peer.
+fn new_peer_disconnected_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::PeerConnectionEvent(
+        PeerConnectionEvent::PeerDisconnected(peer),
+    )]
+}
+
+/// Create a new peer subscription sequence for the given topic.
+fn new_peer_subscribe_seq<H: Hasher>(
+    peer: PeerId,
+    topic: Topic<H>,
+) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::PeerSubscriptionRequest {
+        src: peer,
+        action: SubscriptionAction::Subscribe(topic.hash()),
+    }]
+}
+
+/// Create a new peer unsubscription sequence for the given topic.
+fn new_peer_unsubscribe_seq<H: Hasher>(
+    peer: PeerId,
+    topic: Topic<H>,
+) -> impl IntoIterator<Item = SubscriptionsInEvent> {
+    [SubscriptionsInEvent::PeerSubscriptionRequest {
+        src: peer,
+        action: SubscriptionAction::Unsubscribe(topic.hash()),
+    }]
 }
 
 #[test]
@@ -175,20 +212,6 @@ fn unregister_existing_topic_subscription() {
     });
 }
 
-/// Create a new peer connection event sequence for the given peer.
-fn new_peer_connected_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
-    [SubscriptionsInEvent::PeerConnectionEvent(
-        PeerConnectionEvent::NewPeerConnected(peer),
-    )]
-}
-
-/// Create a new peer disconnection event sequence for the given peer.
-fn new_peer_unsubscribed_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
-    [SubscriptionsInEvent::PeerConnectionEvent(
-        PeerConnectionEvent::PeerDisconnected(peer),
-    )]
-}
-
 #[test]
 fn emit_send_subscriptions_on_new_peer_connected() {
     //// Given
@@ -253,5 +276,215 @@ fn dont_emit_send_subscriptions_on_new_peer_connected_if_no_subscriptions() {
 
     //// Then
     // Assert events
+    assert_eq!(output_events.len(), 0, "No events should be emitted");
+}
+
+#[test]
+fn register_peer_subscription_to_topic_when_not_registered() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let remote_peer = new_test_peer_id();
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    //// When
+    let input_events = itertools::chain!(
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+    );
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert the state
+    assert!(
+        service
+            .is_peer_subscribed(&remote_peer, &topic_a.hash())
+            .unwrap(),
+        "Peer should be subscribed to Topic A"
+    );
+    assert!(
+        service
+            .is_peer_subscribed(&remote_peer, &topic_b.hash())
+            .unwrap(),
+        "Peer should be subscribed to Topic B"
+    );
+
+    // Assert the events
+    assert_eq!(
+        output_events.len(),
+        2,
+        "Only 2 events should be emitted (1 per topic)"
+    );
+    assert_matches!(&output_events[0], SubscriptionsOutEvent::PeerSubscribed { peer, topic } => {
+        assert_eq!(peer, &remote_peer);
+        assert_eq!(topic, &topic_a.hash());
+    });
+    assert_matches!(&output_events[1], SubscriptionsOutEvent::PeerSubscribed { peer, topic } => {
+        assert_eq!(peer, &remote_peer);
+        assert_eq!(topic, &topic_b.hash());
+    });
+}
+
+#[test]
+fn register_peer_subscription_to_topic_when_already_registered() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let remote_peer = new_test_peer_id();
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = itertools::chain!(
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = itertools::chain!(
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert the events
+    assert_eq!(output_events.len(), 0, "No events should be emitted");
+}
+
+#[test]
+fn unregister_peer_subscription_to_topic_when_not_registered() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let remote_peer = new_test_peer_id();
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+    let topic_c = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = itertools::chain!(
+        new_subscribe_seq(topic_a.clone()),
+        new_subscribe_seq(topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = new_peer_unsubscribe_seq(remote_peer, topic_c.clone());
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert the events
+    assert_eq!(output_events.len(), 0, "No events should be emitted");
+}
+
+#[test]
+fn unregister_peer_subscription_to_topic_when_registered() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let remote_peer = new_test_peer_id();
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = itertools::chain!(
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = itertools::chain!(
+        new_peer_unsubscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_unsubscribe_seq(remote_peer, topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    // Assert the state
+    assert!(
+        !service
+            .is_peer_subscribed(&remote_peer, &topic_a.hash())
+            .unwrap(),
+        "Peer should not be subscribed to Topic A"
+    );
+    assert!(
+        !service
+            .is_peer_subscribed(&remote_peer, &topic_b.hash())
+            .unwrap(),
+        "Peer should not be subscribed to Topic B"
+    );
+
+    // Assert the events
+    assert_eq!(
+        output_events.len(),
+        2,
+        "Only 2 events should be emitted (1 per topic)"
+    );
+    assert_matches!(&output_events[0], SubscriptionsOutEvent::PeerUnsubscribed { peer, topic } => {
+        assert_eq!(peer, &remote_peer);
+        assert_eq!(topic, &topic_a.hash());
+    });
+    assert_matches!(&output_events[1], SubscriptionsOutEvent::PeerUnsubscribed { peer, topic } => {
+        assert_eq!(peer, &remote_peer);
+        assert_eq!(topic, &topic_b.hash());
+    });
+}
+
+#[test]
+fn remove_all_peer_subscriptions_on_peer_disconnected() {
+    //// Given
+    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+
+    let remote_peer = new_test_peer_id();
+    let topic_a = new_test_topic();
+    let topic_b = new_test_topic();
+
+    // Simulate a previous subscription to the topic
+    let input_events = itertools::chain!(
+        new_peer_subscribe_seq(remote_peer, topic_a.clone()),
+        new_peer_subscribe_seq(remote_peer, topic_b.clone())
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::poll(&mut service, &mut noop_context());
+
+    //// When
+    let input_events = new_peer_disconnected_seq(remote_peer);
+    testlib::service::inject_events(&mut service, input_events);
+
+    let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+    //// Then
+    assert!(
+        service
+            .is_peer_subscribed(&remote_peer, &topic_a.hash())
+            .is_none(),
+        "Peer should not be subscribed to Topic A"
+    );
+    assert!(
+        service
+            .is_peer_subscribed(&remote_peer, &topic_b.hash())
+            .is_none(),
+        "Peer should not be subscribed to Topic B"
+    );
+
+    // Assert the events
     assert_eq!(output_events.len(), 0, "No events should be emitted");
 }
