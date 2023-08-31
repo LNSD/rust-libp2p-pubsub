@@ -5,6 +5,7 @@ pub use keys::secp256k1_keypair;
 pub use transport::*;
 
 pub mod keys;
+pub mod service;
 pub mod swarm;
 pub mod transport;
 
