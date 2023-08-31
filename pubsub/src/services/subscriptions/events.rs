@@ -55,17 +55,6 @@ pub enum ServiceOut {
     /// This event is emitted when the node unsubscribes from a topic. This will emit one
     /// unsubscription request to each active peer.
     Unsubscribed(TopicHash),
-    /// Send all the local node subscriptions to a peer.
-    ///
-    /// This event is emitted when a new peer connects to the node. This will send one
-    /// [`SubscriptionAction::Subscribe`] action per topic that the local node is subscribed to.
-    SendSubscriptions {
-        /// Peer to send the subscriptions to.
-        peer: PeerId,
-
-        /// Topics list to send.
-        topics: Vec<TopicHash>,
-    },
     /// A peer registered a new subscription.
     ///
     /// This peer is now subscribed to the `topic`.
@@ -85,5 +74,16 @@ pub enum ServiceOut {
 
         /// Topic that the peer unsubscribed from.
         topic: TopicHash,
+    },
+    /// Send all the local node subscriptions to a peer.
+    ///
+    /// This event is emitted when a new peer connects to the node. This will send one
+    /// [`SubscriptionAction::Subscribe`] action per topic that the local node is subscribed to.
+    SendSubscriptions {
+        /// Peer to send the subscriptions to.
+        peer: PeerId,
+
+        /// Topics list to send.
+        topics: Vec<TopicHash>,
     },
 }
