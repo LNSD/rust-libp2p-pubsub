@@ -2,6 +2,7 @@ pub use topic::{Hasher, IdentityHash, Sha256Hash, Topic, TopicHash};
 
 mod conn_handler;
 mod framing;
+mod services;
 mod topic;
 
 pub type IdentTopic = Topic<IdentityHash>;
