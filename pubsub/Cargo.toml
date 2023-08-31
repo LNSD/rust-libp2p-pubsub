@@ -4,9 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+asynchronous-codec = "0.6.2"
 base64 = "0.21.3"
 bytes.workspace = true
+common = { version = "0.1.0", path = "../common", features = ["prost_codec"] }
+futures.workspace = true
 libp2p.workspace = true
 prost.workspace = true
 sha2 = "0.10.7"
+smallvec = "1.11.0"
 thiserror.workspace = true
+tracing.workspace = true
