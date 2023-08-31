@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 assert_matches.workspace = true
+common = { version = "0.1.0", path = "../common" }
 futures.workspace = true
+futures-test = "0.3.28"
 hex = "0.4.3"
 libp2p = { workspace = true, features = ["secp256k1", "yamux", "plaintext"] }
 tokio = { workspace = true, features = ["macros", "time"] }
