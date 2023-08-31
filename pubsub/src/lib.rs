@@ -1,8 +1,12 @@
+pub use message_id::{default_message_id_fn, MessageId, MessageIdFn};
+pub use subscription::{Subscription, SubscriptionBuilder};
 pub use topic::{Hasher, IdentityHash, Sha256Hash, Topic, TopicHash};
 
 mod conn_handler;
 mod framing;
+mod message_id;
 mod services;
+mod subscription;
 mod topic;
 
 pub type IdentTopic = Topic<IdentityHash>;
