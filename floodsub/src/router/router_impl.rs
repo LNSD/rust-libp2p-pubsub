@@ -141,10 +141,6 @@ impl Service for Router {
 
                 if let Some(peers) = self.get_peers_subscribed(&topic) {
                     let peers = peers.iter().cloned().collect::<Vec<_>>();
-                    if peers.is_empty() {
-                        return None;
-                    }
-
                     return Some(ProtocolRouterOutEvent::ForwardMessage {
                         dest: peers,
                         message,

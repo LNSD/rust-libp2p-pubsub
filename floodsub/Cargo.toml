@@ -27,6 +27,7 @@ tracing.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 common-test = { path = "../common-test" }
+itertools = "0.11.0"
 libp2p = { workspace = true, features = ["yamux", "secp256k1", "tokio", "gossipsub"] }
 tokio.workspace = true
 tracing-futures = "0.2.5"
