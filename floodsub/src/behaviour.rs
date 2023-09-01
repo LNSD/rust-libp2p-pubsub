@@ -18,7 +18,7 @@ use crate::proto::{
     fragment_rpc_message, validate_message_proto, validate_rpc_proto, validate_subopts_proto,
     FragmentationError, RpcProto,
 };
-use crate::router::Router;
+use crate::routing::Router;
 use crate::seqno::{LinearSequenceNumber, MessageSeqNumberGenerator};
 use crate::topic::{Hasher, Topic, TopicHash};
 
