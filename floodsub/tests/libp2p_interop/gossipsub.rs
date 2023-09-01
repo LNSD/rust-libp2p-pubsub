@@ -4,7 +4,6 @@ use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use bytes::Bytes;
 use futures::StreamExt;
 use libp2p::gossipsub::{
     Behaviour as Libp2pGossipsubBehaviour, Config as Libp2pGossipsubConfig,
@@ -255,7 +254,7 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     let topic = new_test_topic();
     let libp2p_topic = new_libp2p_topic(topic.hash().as_str());
 
-    let message_payload = Bytes::from_static(b"test-payload");
+    let message_payload = b"test-payload";
 
     let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
