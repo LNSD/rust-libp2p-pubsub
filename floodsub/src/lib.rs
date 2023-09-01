@@ -1,6 +1,8 @@
 pub use behaviour::{Behaviour, Event, PublishError, SendError, SubscriptionError};
 pub use config::Config;
 pub use frame::Message;
+pub use protocol::{Protocol, ProtocolId};
+pub use router::Router;
 pub use topic::{Hasher, Topic, TopicHash};
 
 mod behaviour;
@@ -10,7 +12,9 @@ mod frame;
 mod handler;
 mod message_id;
 mod proto;
+mod protocol;
 mod router;
+mod routing;
 mod seqno;
 mod topic;
 

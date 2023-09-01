@@ -1,11 +1,8 @@
-use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use bytes::Bytes;
-use futures::StreamExt;
 use libp2p::identity::{Keypair, PeerId};
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::Swarm;
@@ -16,7 +13,10 @@ use tracing_futures::Instrument;
 use common_test as testlib;
 use common_test::any_memory_addr;
 use common_test::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
-use floodsub::{Behaviour, Config, Event, Hasher, IdentTopic, Topic};
+use floodsub::Protocol as Floodsub;
+use pubsub::{Behaviour as PubsubBehaviour, Config, Event, Hasher, IdentTopic, Message, Topic};
+
+type Behaviour = PubsubBehaviour<Floodsub>;
 
 /// Create a new test topic with a random name.
 fn new_test_topic() -> IdentTopic {
@@ -30,7 +30,7 @@ fn new_test_topic() -> IdentTopic {
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config);
+    let behaviour = Behaviour::new(config, Default::default());
     SwarmBuilder::with_executor(
         transport,
         behaviour,
@@ -44,7 +44,7 @@ fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
 
 /// Subscribe to a topic and assert that the subscription is successful.
 #[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]
-fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: &Topic<H>) -> bool {
+fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: Topic<H>) -> bool {
     let result = swarm.behaviour_mut().subscribe(topic);
 
     assert_matches!(result, Ok(_), "subscribe to topic should succeed");
@@ -56,35 +56,10 @@ fn should_subscribe_to_topic<H: Hasher>(swarm: &mut Swarm<Behaviour>, topic: &To
 ///
 /// Returns the `MessageId` of the published message.
 #[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]
-fn should_publish_to_topic<H: Hasher>(
-    swarm: &mut Swarm<Behaviour>,
-    topic: &Topic<H>,
-    data: impl Into<Vec<u8>>,
-) {
-    let result = swarm.behaviour_mut().publish(topic, data);
+fn should_publish_to_topic(swarm: &mut Swarm<Behaviour>, message: Message) {
+    let result = swarm.behaviour_mut().publish(message);
 
     assert_matches!(result, Ok(_), "publish to topic should succeed");
-}
-
-/// Wait for a message event to be received by the swarm.
-///
-/// Returns all the events received by the swarm until the message event is received.
-async fn wait_for_message(swarm: &mut Swarm<Behaviour>) -> Vec<SwarmEvent<Event, Infallible>> {
-    let mut events = Vec::new();
-
-    loop {
-        let event = swarm.select_next_some().await;
-        events.push(event);
-
-        if matches!(
-            events.last(),
-            Some(SwarmEvent::Behaviour(Event::Message { .. }))
-        ) {
-            break;
-        }
-    }
-
-    events
 }
 
 #[tokio::test]
@@ -92,8 +67,8 @@ async fn publish_to_topic() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = new_test_topic();
-    let message_payload = Bytes::from_static(b"test-payload");
+    let topic = new_test_topic();
+    let message_payload = b"test-payload";
 
     let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
@@ -115,8 +90,11 @@ async fn publish_to_topic() {
     .expect("listening to start");
 
     // Subscribe to the topic
-    should_subscribe_to_topic(&mut publisher, &pubsub_topic);
-    should_subscribe_to_topic(&mut subscriber, &pubsub_topic);
+    should_subscribe_to_topic(&mut publisher, topic.clone());
+    should_subscribe_to_topic(&mut subscriber, topic.clone());
+
+    // Poll the pub-sub network to process the subscriptions
+    testlib::swarm::poll_mesh(Duration::from_micros(10), &mut publisher, &mut subscriber).await;
 
     // Dial the publisher node
     testlib::swarm::should_dial_address(&mut subscriber, publisher_addr);
@@ -131,7 +109,8 @@ async fn publish_to_topic() {
     testlib::swarm::poll_mesh(Duration::from_millis(50), &mut publisher, &mut subscriber).await;
 
     //// When
-    should_publish_to_topic(&mut publisher, &pubsub_topic, message_payload.clone());
+    let message = Message::new(topic.clone(), *message_payload);
+    should_publish_to_topic(&mut publisher, message);
 
     let (_, sub_events) = testlib::swarm::poll_mesh_and_collect_events(
         Duration::from_millis(50),
@@ -141,17 +120,18 @@ async fn publish_to_topic() {
     .await;
 
     //// Then
-    let messages = sub_events
-        .into_iter()
-        .filter(|ev| matches!(ev, SwarmEvent::Behaviour(Event::Message { .. })))
-        .collect::<Vec<_>>();
-    assert_eq!(messages.len(), 1);
-
-    let last_message = messages.last().expect("at least one event");
-    assert_matches!(last_message, SwarmEvent::Behaviour(Event::Message { message, .. }) => {
-        assert!(message.sequence_number().is_some());
+    assert_eq!(
+        sub_events.len(),
+        1,
+        "Only 1 message event should be emitted"
+    );
+    assert_matches!(&sub_events[0], SwarmEvent::Behaviour(Event::MessageReceived { src, message }) => {
+        // Assert the propagation peer
+        assert_eq!(src, publisher.local_peer_id(), "The message should be propagated by the publisher");
+        // Assert the message
+        assert!(message.sequence_number().is_none());
         assert!(message.source().is_none());
-        assert_eq!(message.topic_str(), pubsub_topic.hash().as_str());
+        assert_eq!(message.topic_str(), topic.hash().as_str());
         assert_eq!(message.data()[..], message_payload[..]);
     });
 }

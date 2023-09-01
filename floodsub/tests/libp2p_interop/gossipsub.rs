@@ -23,8 +23,12 @@ use void::Void;
 use common_test as testlib;
 use common_test::any_memory_addr;
 use common_test::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
-use floodsub::{Behaviour, Config, Event, IdentTopic};
+use floodsub::Protocol as Floodsub;
+use pubsub::{Behaviour as PubsubBehaviour, Config, Event, IdentTopic, Message};
 
+type Behaviour = PubsubBehaviour<Floodsub>;
+
+/// Create a new test topic with a random name.
 fn new_test_topic() -> IdentTopic {
     IdentTopic::new(format!(
         "/pubsub/2/it-pubsub-test-{}",
@@ -32,14 +36,16 @@ fn new_test_topic() -> IdentTopic {
     ))
 }
 
+/// Create a new test topic from a given string..
 fn new_libp2p_topic(raw: &str) -> Libp2pGossipsubIdentTopic {
     Libp2pGossipsubIdentTopic::new(raw)
 }
 
+/// Create a new test node with the given keypair and config.
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config);
+    let behaviour = Behaviour::new(config, Default::default());
     SwarmBuilder::with_executor(
         transport,
         behaviour,
@@ -51,6 +57,7 @@ fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     .build()
 }
 
+/// Create a new libp2p gossipsub test node with the given keypair and config.
 fn new_libp2p_gossipsub_node(
     keypair: &Keypair,
     privacy: Libp2pGossipsubMessageAuthenticity,
@@ -78,12 +85,12 @@ async fn wait_for_message_event(
 
     loop {
         let event = swarm.select_next_some().await;
-        tracing::trace!("Event emitted: {event:?}");
+        tracing::trace!(?event, "Event emitted");
         events.push(event);
 
         if matches!(
             events.last(),
-            Some(SwarmEvent::Behaviour(Event::Message { .. }))
+            Some(SwarmEvent::Behaviour(Event::MessageReceived { .. }))
         ) {
             break;
         }
@@ -99,7 +106,7 @@ async fn wait_for_libp2p_gossipsub_message_event(
 
     loop {
         let event = swarm.select_next_some().await;
-        tracing::trace!("Event emitted: {event:?}");
+        tracing::trace!(?event, "Event emitted");
         events.push(event);
 
         if matches!(
@@ -145,10 +152,10 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = new_test_topic();
-    let libp2p_pubsub_topic = new_libp2p_topic(pubsub_topic.hash().as_str());
+    let topic = new_test_topic();
+    let libp2p_topic = new_libp2p_topic(topic.hash().as_str());
 
-    let message_payload = Bytes::from_static(b"test-payload");
+    let message_payload = b"test-payload";
 
     let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
@@ -180,12 +187,20 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
     // Subscribe to the topic
     publisher
         .behaviour_mut()
-        .subscribe(&pubsub_topic)
+        .subscribe(topic.clone())
         .expect("subscribe to topic");
     libp2p_subscriber
         .behaviour_mut()
-        .subscribe(&libp2p_pubsub_topic)
+        .subscribe(&libp2p_topic)
         .expect("subscribe to topic");
+
+    // Poll the pub-sub network to process the subscriptions
+    testlib::swarm::poll_mesh(
+        Duration::from_micros(10),
+        &mut publisher,
+        &mut libp2p_subscriber,
+    )
+    .await;
 
     // Dial the publisher node
     testlib::swarm::should_dial_address(&mut publisher, subscriber_addr);
@@ -204,9 +219,10 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
     .await;
 
     //// When
+    let message = Message::new(topic.clone(), *message_payload);
     publisher
         .behaviour_mut()
-        .publish(&pubsub_topic, message_payload.clone())
+        .publish(message)
         .expect("publish the message");
 
     let sub_events = wait_mesh_message_propagation(
@@ -219,9 +235,9 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
     //// Then
     let last_event = sub_events.last().expect("at least one event");
     assert_matches!(last_event, SwarmEvent::Behaviour(Libp2pGossipsubEvent::Message { message, .. }) => {
-        assert!(message.sequence_number.is_some());
+        assert!(message.sequence_number.is_none());
         assert!(message.source.is_none());
-        assert_eq!(message.topic.as_str(), pubsub_topic.hash().as_str());
+        assert_eq!(message.topic.as_str(), topic.hash().as_str());
         assert_eq!(message.data[..], message_payload[..]);
     });
 }
@@ -236,8 +252,8 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     testlib::init_logger();
 
     //// Given
-    let pubsub_topic = new_test_topic();
-    let libp2p_pubsub_topic = new_libp2p_topic(pubsub_topic.hash().as_str());
+    let topic = new_test_topic();
+    let libp2p_topic = new_libp2p_topic(topic.hash().as_str());
 
     let message_payload = Bytes::from_static(b"test-payload");
 
@@ -271,11 +287,11 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     // Subscribe to the topic
     libp2p_publisher
         .behaviour_mut()
-        .subscribe(&libp2p_pubsub_topic)
+        .subscribe(&libp2p_topic)
         .expect("subscribe to topic");
     subscriber
         .behaviour_mut()
-        .subscribe(&pubsub_topic)
+        .subscribe(topic.clone())
         .expect("subscribe to topic");
 
     // Dial the publisher node
@@ -297,7 +313,7 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     //// When
     libp2p_publisher
         .behaviour_mut()
-        .publish(libp2p_pubsub_topic.hash(), message_payload.clone())
+        .publish(libp2p_topic.hash(), message_payload.clone())
         .expect("publish the message");
 
     let sub_events = wait_mesh_libp2p_gossipsub_message_propagation(
@@ -308,11 +324,18 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     .await;
 
     //// Then
-    let last_event = sub_events.last().expect("at least one event");
-    assert_matches!(last_event, SwarmEvent::Behaviour(Event::Message { message, .. }) => {
+    assert_eq!(
+        sub_events.len(),
+        1,
+        "Only 1 message event should be emitted"
+    );
+    assert_matches!(&sub_events[0], SwarmEvent::Behaviour(Event::MessageReceived { src, message }) => {
+        // Assert the propagation peer
+        assert_eq!(src, libp2p_publisher.local_peer_id(), "The message should be propagated by the publisher");
+        // Assert the message
         assert!(message.sequence_number().is_none());
         assert!(message.source().is_none());
-        assert_eq!(message.topic_str(), pubsub_topic.hash().as_str());
+        assert_eq!(message.topic_str(), topic.hash().as_str());
         assert_eq!(message.data()[..], message_payload[..]);
     });
 }

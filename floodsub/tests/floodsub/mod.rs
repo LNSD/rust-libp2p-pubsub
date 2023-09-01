@@ -1,3 +1,3 @@
 mod connections;
-mod pubsub;
+mod routing;
 mod subscriptions;

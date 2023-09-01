@@ -8,13 +8,16 @@ use tokio::time::timeout;
 use tracing_futures::Instrument;
 
 use common_test as testlib;
-use floodsub::{Behaviour, Config};
-use testlib::any_memory_addr;
+use common_test::any_memory_addr;
+use floodsub::Protocol as Floodsub;
+use pubsub::{Behaviour as PubsubBehaviour, Config};
+
+type Behaviour = PubsubBehaviour<Floodsub>;
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config);
+    let behaviour = Behaviour::new(config, Default::default());
     SwarmBuilder::with_executor(
         transport,
         behaviour,
@@ -31,47 +34,48 @@ async fn connection_is_established() {
     testlib::init_logger();
 
     //// Given
-    let publisher_key = testlib::secp256k1_keypair(testlib::keys::TEST_KEYPAIR_A);
-    let subscriber_key = testlib::secp256k1_keypair(testlib::keys::TEST_KEYPAIR_B);
+    let node_a_key = testlib::secp256k1_keypair(testlib::keys::TEST_KEYPAIR_A);
+    let node_b_key = testlib::secp256k1_keypair(testlib::keys::TEST_KEYPAIR_B);
 
-    let pubsub_config = Config::default();
+    let mut node_a = new_test_node(&node_a_key, Default::default());
+    testlib::swarm::should_listen_on_address(&mut node_a, any_memory_addr());
 
-    let mut publisher = new_test_node(&publisher_key, pubsub_config.clone());
-    testlib::swarm::should_listen_on_address(&mut publisher, any_memory_addr());
+    let mut node_b = new_test_node(&node_b_key, Default::default());
+    testlib::swarm::should_listen_on_address(&mut node_b, any_memory_addr());
 
-    let mut subscriber = new_test_node(&subscriber_key, pubsub_config.clone());
-    testlib::swarm::should_listen_on_address(&mut subscriber, any_memory_addr());
-
-    let (publisher_addr, _subscriber_addr) = timeout(
+    let (node_a_addr, _node_b_addr) = timeout(
         Duration::from_secs(5),
-        testlib::swarm::wait_for_start_listening(&mut publisher, &mut subscriber),
+        testlib::swarm::wait_for_start_listening(&mut node_a, &mut node_b),
     )
     .await
     .expect("listening to start");
 
     //// When
-    // Dial the publisher node
-    testlib::swarm::should_dial_address(&mut subscriber, publisher_addr);
+    // Node B dials Node A address.
+    testlib::swarm::should_dial_address(&mut node_b, node_a_addr);
     timeout(
         Duration::from_secs(5),
-        testlib::swarm::wait_for_connection_establishment(&mut subscriber, &mut publisher),
+        testlib::swarm::wait_for_connection_establishment(&mut node_b, &mut node_a),
     )
     .await
-    .expect("subscriber to connect to publisher");
+    .expect("node_b to connect to node_a");
+
+    // Poll the swarm to make sure the connection is established.
+    testlib::swarm::poll_mesh(Duration::from_millis(10), &mut node_a, &mut node_b).await;
 
     //// Then
-    let pub_connections = publisher.behaviour().connections();
-    let sub_connections = subscriber.behaviour().connections();
+    let node_a_connections = node_a.behaviour().connections();
+    let node_b_connections = node_b.behaviour().connections();
 
-    assert_eq!(pub_connections.active_peers_count(), 1);
-    assert_eq!(pub_connections.active_peers().len(), 1);
-    assert!(pub_connections
+    assert_eq!(node_a_connections.active_peers_count(), 1);
+    assert_eq!(node_a_connections.active_peers().len(), 1);
+    assert!(node_a_connections
         .active_peers()
-        .contains(subscriber.local_peer_id()));
+        .contains(node_b.local_peer_id()));
 
-    assert_eq!(sub_connections.active_peers_count(), 1);
-    assert_eq!(sub_connections.active_peers().len(), 1);
-    assert!(sub_connections
+    assert_eq!(node_b_connections.active_peers_count(), 1);
+    assert_eq!(node_b_connections.active_peers().len(), 1);
+    assert!(node_b_connections
         .active_peers()
-        .contains(publisher.local_peer_id()));
+        .contains(node_a.local_peer_id()));
 }
