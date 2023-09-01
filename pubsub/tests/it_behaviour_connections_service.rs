@@ -9,12 +9,17 @@ use tracing_futures::Instrument;
 
 use common_test as testlib;
 use common_test::any_memory_addr;
-use pubsub::{Behaviour, Config};
+use pubsub::{Behaviour as PubsubBehaviour, Config};
+use pubsub_testlib::NoopProtocol;
+
+mod pubsub_testlib;
+
+type Behaviour = PubsubBehaviour<NoopProtocol>;
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config);
+    let behaviour = Behaviour::new(config, Default::default());
     SwarmBuilder::with_executor(
         transport,
         behaviour,
