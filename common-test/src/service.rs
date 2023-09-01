@@ -1,3 +1,4 @@
+use std::future::poll_fn;
 use std::task::{Context, Poll};
 
 use common::service::{Context as ServiceContext, Service};
@@ -35,7 +36,7 @@ pub fn poll<S>(service: &mut ServiceContext<S>, cx: &mut Context<'_>)
 where
     S: Service,
 {
-    while let Poll::Ready(_) = service.poll(cx) {}
+    while service.poll(cx).is_ready() {}
 }
 
 /// Poll a [`Service`] and collect all events from it.
@@ -51,4 +52,37 @@ where
         events.push(event);
     }
     events
+}
+
+/// Poll a [`Service`] during a given duration and collect all events from it.
+///
+/// All events emitted by the service are discarded. See [`async_collect_events`] to collect all events
+/// emitted by the service.
+pub async fn async_poll<S>(service: &mut ServiceContext<S>)
+where
+    S: Service,
+{
+    poll_fn(|cx| {
+        while service.poll(cx).is_ready() {}
+        Poll::Ready(())
+    })
+    .await
+}
+
+/// Poll asynchronously a [`Service`] and collect all events from it.
+///
+/// This function polls the service until it returns `Poll::Pending`. Returns a `Vec` of all events
+/// emitted by the service.
+pub async fn async_collect_events<S>(service: &mut ServiceContext<S>) -> Vec<S::OutEvent>
+where
+    S: Service,
+{
+    poll_fn(|cx| {
+        let mut events = Vec::new();
+        while let Poll::Ready(event) = service.poll(cx) {
+            events.push(event);
+        }
+        Poll::Ready(events)
+    })
+    .await
 }
