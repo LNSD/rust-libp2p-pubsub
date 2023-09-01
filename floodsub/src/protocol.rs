@@ -1,9 +1,9 @@
 use crate::router::Router;
 
 /// Floodsub Protocol ID string.
-const FLOODSUB_PROTOCOL_ID: &str = "/floodsub/1.0.0";
+pub const PROTOCOL_ID: &str = "/floodsub/1.0.0";
 
-/// The Floodsub protocol.
+/// The Floodsub pubsub protocol.
 #[derive(Default)]
 pub struct Protocol;
 
@@ -21,5 +21,5 @@ impl pubsub::Protocol for Protocol {
 pub struct ProtocolId;
 
 impl pubsub::ProtocolId for ProtocolId {
-    const PROTOCOL_ID: &'static str = FLOODSUB_PROTOCOL_ID;
+    const PROTOCOL_ID: &'static str = PROTOCOL_ID;
 }
