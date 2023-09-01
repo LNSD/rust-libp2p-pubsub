@@ -3,17 +3,21 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::identity::PeerId;
+use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionId, FromSwarm, NetworkBehaviour, PollParameters, THandler,
+    AddressChange, ConnectionClosed, ConnectionDenied, ConnectionHandler, ConnectionId,
+    DialFailure, FromSwarm, ListenFailure, NetworkBehaviour, PollParameters, THandler,
     THandlerInEvent, THandlerOutEvent, ToSwarm,
 };
 use libp2p::Multiaddr;
+
+use common::service::Context as ServiceContext;
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Handler};
 use crate::event::Event;
 use crate::framing::Message;
-use crate::services::connections::ConnectionsService;
+use crate::services::connections::{ConnectionsInEvent, ConnectionsService, ConnectionsSwarmEvent};
 use crate::subscription::Subscription;
 use crate::topic::{Hasher, Topic, TopicHash};
 
@@ -23,6 +27,9 @@ const PROTOCOL_ID: &str = "/floodsub/1.0.0";
 pub struct Behaviour {
     /// The behaviour's configuration.
     config: Config,
+
+    /// Peer connections tracking and management service.
+    connections_service: ServiceContext<ConnectionsService>,
 
     /// Connection handler's mailbox.
     ///
@@ -42,6 +49,7 @@ impl Behaviour {
     pub fn new(config: Config) -> Self {
         Self {
             config,
+            connections_service: Default::default(),
             conn_handler_mailbox: Default::default(),
             behaviour_output_mailbox: Default::default(),
         }
@@ -49,7 +57,7 @@ impl Behaviour {
 
     /// Get a reference to the connections service.
     pub fn connections(&self) -> &ConnectionsService {
-        todo!()
+        &self.connections_service
     }
 
     /// Get local node topic subscriptions.
@@ -95,11 +103,18 @@ impl NetworkBehaviour for Behaviour {
     fn handle_established_inbound_connection(
         &mut self,
         connection_id: ConnectionId,
-        peer: PeerId,
+        peer_id: PeerId,
         local_addr: &Multiaddr,
         remote_addr: &Multiaddr,
     ) -> Result<THandler<Self>, ConnectionDenied> {
-        // TODO: Handle inbound connection event
+        // Emit an event to the connections service.
+        self.connections_service
+            .do_send(ConnectionsInEvent::EstablishedInboundConnection {
+                connection_id,
+                peer_id,
+                local_addr: local_addr.clone(),
+                remote_addr: remote_addr.clone(),
+            });
 
         Ok(Handler::new(
             PROTOCOL_ID,
@@ -111,11 +126,17 @@ impl NetworkBehaviour for Behaviour {
     fn handle_established_outbound_connection(
         &mut self,
         connection_id: ConnectionId,
-        peer: PeerId,
-        addr: &Multiaddr,
-        role_override: Endpoint,
+        peer_id: PeerId,
+        remote_addr: &Multiaddr,
+        _role_override: Endpoint,
     ) -> Result<THandler<Self>, ConnectionDenied> {
-        // TODO: Handle outbound connection event
+        // Emit an event to the connections service.
+        self.connections_service
+            .do_send(ConnectionsInEvent::EstablishedOutboundConnection {
+                connection_id,
+                peer_id,
+                remote_addr: remote_addr.clone(),
+            });
 
         Ok(Handler::new(
             PROTOCOL_ID,
@@ -125,7 +146,29 @@ impl NetworkBehaviour for Behaviour {
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<Self::ConnectionHandler>) {
-        // TODO: Handle connection events
+        match event {
+            FromSwarm::ConnectionEstablished(ev) => {
+                self.connections_service
+                    .do_send(ConnectionsInEvent::from_swarm_event(ev));
+            }
+            FromSwarm::ConnectionClosed(ev) => {
+                self.connections_service
+                    .do_send(ConnectionsInEvent::from_swarm_event(ev));
+            }
+            FromSwarm::AddressChange(ev) => {
+                self.connections_service
+                    .do_send(ConnectionsInEvent::from_swarm_event(ev));
+            }
+            FromSwarm::DialFailure(ev) => {
+                self.connections_service
+                    .do_send(ConnectionsInEvent::from_swarm_event(ev));
+            }
+            FromSwarm::ListenFailure(ev) => {
+                self.connections_service
+                    .do_send(ConnectionsInEvent::from_swarm_event(ev));
+            }
+            _ => {}
+        }
     }
 
     fn on_connection_handler_event(
@@ -142,6 +185,13 @@ impl NetworkBehaviour for Behaviour {
         cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
     ) -> Poll<ToSwarm<Self::ToSwarm, THandlerInEvent<Self>>> {
+        // Poll the connections service.
+        while let Poll::Ready(_event) = self.connections_service.poll(cx) {
+            // TODO: Notify the subscriptions service of the connection event.
+
+            // TODO: Notify the protocol's routing service of the connection event.
+        }
+
         // Process the connection handler mailbox.
         if let Some(event) = self.conn_handler_mailbox.pop_front() {
             return Poll::Ready(event);
@@ -153,5 +203,55 @@ impl NetworkBehaviour for Behaviour {
         }
 
         Poll::Pending
+    }
+}
+
+impl From<ConnectionEstablished<'_>> for ConnectionsSwarmEvent {
+    fn from(ev: ConnectionEstablished) -> Self {
+        Self::ConnectionEstablished {
+            connection_id: ev.connection_id,
+            peer_id: ev.peer_id,
+        }
+    }
+}
+
+impl<H: ConnectionHandler> From<ConnectionClosed<'_, H>> for ConnectionsSwarmEvent {
+    fn from(ev: ConnectionClosed<H>) -> Self {
+        Self::ConnectionClosed {
+            connection_id: ev.connection_id,
+            peer_id: ev.peer_id,
+        }
+    }
+}
+
+impl From<AddressChange<'_>> for ConnectionsSwarmEvent {
+    fn from(ev: AddressChange) -> Self {
+        Self::AddressChange {
+            connection_id: ev.connection_id,
+            peer_id: ev.peer_id,
+            old: ev.old.clone(),
+            new: ev.new.clone(),
+        }
+    }
+}
+
+impl From<DialFailure<'_>> for ConnectionsSwarmEvent {
+    fn from(ev: DialFailure) -> Self {
+        Self::DialFailure {
+            connection_id: ev.connection_id,
+            peer_id: ev.peer_id,
+            error: ev.error.to_string(), // TODO: Use a custom error type.
+        }
+    }
+}
+
+impl From<ListenFailure<'_>> for ConnectionsSwarmEvent {
+    fn from(ev: ListenFailure) -> Self {
+        Self::ListenFailure {
+            connection_id: ev.connection_id,
+            local_addr: ev.local_addr.clone(),
+            send_back_addr: ev.send_back_addr.clone(),
+            error: ev.error.to_string(), // TODO: Use a custom error type.
+        }
     }
 }

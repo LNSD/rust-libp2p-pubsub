@@ -86,7 +86,7 @@ pub enum SwarmEvent {
     /// Informs the behaviour that the [`ConnectedPoint`] of an existing connection has changed.
     ///
     /// This event maps to NetworkBehaviour's [`FromSwarm::AddressChange`](libp2p::swarm::behaviour::FromSwarm::AddressChange) event.
-    ConnectionAddressChange {
+    AddressChange {
         connection_id: ConnectionId,
         peer_id: PeerId,
         old: ConnectedPoint,

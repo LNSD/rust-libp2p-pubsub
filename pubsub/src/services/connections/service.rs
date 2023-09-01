@@ -230,7 +230,7 @@ impl Service for ConnectionsService {
                         return Some(ServiceOut::PeerDisconnected(peer_id));
                     }
                 }
-                SwarmEvent::ConnectionAddressChange {
+                SwarmEvent::AddressChange {
                     connection_id, new, ..
                 } => {
                     let new_remote_addr = new.get_remote_address();
