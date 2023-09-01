@@ -9,7 +9,6 @@ use crate::topic::{Hasher, Topic, TopicHash};
 pub struct Subscription {
     /// The topic to subscribe to.
     pub topic: TopicHash,
-
     /// The message id function to use for this subscription.
     pub message_id_fn: Option<Rc<MessageIdFn>>,
 }
@@ -18,7 +17,13 @@ impl Debug for Subscription {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Subscription")
             .field("topic", &self.topic)
-            .field("message_id_fn", &self.message_id_fn.is_some())
+            .field(
+                "message_id_fn",
+                match &self.message_id_fn {
+                    None => &"MessageIdFn(not_defined)",
+                    Some(_) => &"MessageIdFn(custom)",
+                },
+            )
             .finish()
     }
 }

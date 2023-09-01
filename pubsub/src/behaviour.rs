@@ -14,7 +14,7 @@ use libp2p::swarm::{
 use libp2p::Multiaddr;
 use prost::Message as _;
 
-use common::service::{Context as ServiceContext, Service};
+use common::service::Context as ServiceContext;
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
@@ -22,6 +22,10 @@ use crate::event::Event;
 use crate::framing::{
     validate_frame_proto, validate_message_proto, validate_subopts_proto, Frame, FrameProto,
     Message, SubscriptionAction,
+};
+use crate::protocol::{
+    Protocol, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
+    ProtocolRouterSubscriptionEvent,
 };
 use crate::services::connections::{
     ConnectionsInEvent, ConnectionsOutEvent, ConnectionsService, ConnectionsSwarmEvent,
@@ -36,10 +40,7 @@ use crate::services::subscriptions::{
 use crate::subscription::Subscription;
 use crate::topic::{Hasher, Topic, TopicHash};
 
-// TODO: Make the connection handler generic over the protocol.
-const PROTOCOL_ID: &str = "/floodsub/1.0.0";
-
-pub struct Behaviour {
+pub struct Behaviour<P: Protocol> {
     /// The behaviour's configuration.
     config: Config,
 
@@ -51,6 +52,9 @@ pub struct Behaviour {
 
     /// Message cache and deduplication service.
     message_cache_service: ServiceContext<MessageCacheService>,
+
+    /// The pubsub protocol router service.
+    protocol_router_service: ServiceContext<P::RouterService>,
 
     /// Connection handler's mailbox.
     ///
@@ -65,21 +69,23 @@ pub struct Behaviour {
 }
 
 /// Public API.
-impl Behaviour {
-    /// Creates a new `Behaviour` from the given configuration.
-    pub fn new(config: Config) -> Self {
+impl<P: Protocol> Behaviour<P> {
+    /// Creates a new `Behaviour` from the given configuration and protocol.
+    pub fn new(config: Config, protocol: P) -> Self {
         let message_cache_service = ServiceContext::new(MessageCacheService::new(
             config.message_cache_capacity(),
             config.message_cache_ttl(),
             config.heartbeat_interval(),
             Duration::from_secs(0),
         ));
+        let protocol_router_service = ServiceContext::new(protocol.router());
 
         Self {
             config,
             connections_service: Default::default(),
             subscriptions_service: Default::default(),
             message_cache_service,
+            protocol_router_service,
             conn_handler_mailbox: Default::default(),
             behaviour_output_mailbox: Default::default(),
         }
@@ -142,12 +148,41 @@ impl Behaviour {
 
     /// Publish a message to the network.
     pub fn publish(&mut self, message: Message) -> anyhow::Result<()> {
-        todo!()
+        let topic = message.topic();
+
+        tracing::debug!(%topic, "Publishing message");
+
+        // Check if we are subscribed to the topic.
+        if !self.subscriptions_service.is_subscribed(&topic) {
+            return Err(anyhow::anyhow!("Not subscribed to topic"));
+        }
+
+        // Check if we have connections to publish the message.
+        if self.connections_service.active_peers_count() == 0 {
+            return Err(anyhow::anyhow!("No active connections"));
+        }
+
+        // Check if message was already published.
+        if self.message_cache_service.contains(&message) {
+            return Err(anyhow::anyhow!("Message already published"));
+        }
+
+        let message = Rc::new(message);
+
+        // Notify the message cache service to add the message to the message cache.
+        self.message_cache_service
+            .do_send(MessageCacheInEvent::MessagePublished(message.clone()));
+
+        // Emit a message published event to the protocol service.
+        self.protocol_router_service
+            .do_send(ProtocolRouterInEvent::MessagePublished(message));
+
+        Ok(())
     }
 }
 
 /// Internal API.
-impl Behaviour {
+impl<P: Protocol> Behaviour<P> {
     /// Handle a pubsub frame received from a `src` peer.
     fn on_frame_received(&mut self, src: PeerId, frame: FrameProto) {
         // 1. Validate the RPC frame.
@@ -185,13 +220,18 @@ impl Behaviour {
                 self.message_cache_service
                     .do_send(MessageCacheInEvent::MessageReceived(message.clone()));
 
-                // TODO: Emit a message received event to the protocol's routing service.
+                // Emit a message received event to the protocol's routing service.
+                self.protocol_router_service
+                    .do_send(ProtocolRouterInEvent::MessageReceived {
+                        src,
+                        message: message.clone(),
+                    });
 
                 // Emit a message received event to the behaviour output mailbox.
                 self.behaviour_output_mailbox
                     .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
                         source: src,
-                        message: message.as_ref().clone(),
+                        message: (*message).clone(), // Clone the underlying message.
                     }));
             }
         }
@@ -260,7 +300,7 @@ impl Behaviour {
     }
 }
 
-impl NetworkBehaviour for Behaviour {
+impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
     type ConnectionHandler = Handler;
     type ToSwarm = Event;
 
@@ -281,7 +321,7 @@ impl NetworkBehaviour for Behaviour {
             });
 
         Ok(Handler::new(
-            PROTOCOL_ID,
+            P::protocol_id(),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
@@ -303,7 +343,7 @@ impl NetworkBehaviour for Behaviour {
             });
 
         Ok(Handler::new(
-            PROTOCOL_ID,
+            P::protocol_id(),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
@@ -355,9 +395,23 @@ impl NetworkBehaviour for Behaviour {
         while let Poll::Ready(conn_event) = self.connections_service.poll(cx) {
             // Notify the subscriptions service of the connection event.
             self.subscriptions_service
-                .do_send(SubscriptionsInEvent::from_peer_connection_event(conn_event));
+                .do_send(SubscriptionsInEvent::from_peer_connection_event(
+                    conn_event.clone(),
+                ));
 
-            // TODO: Notify the protocol's routing service of the connection event.
+            // Notify the protocol's routing service of the connection event.
+            self.protocol_router_service.do_send(match conn_event {
+                ConnectionsOutEvent::NewPeerConnected(peer) => {
+                    ProtocolRouterInEvent::ConnectionEvent(
+                        ProtocolRouterConnectionEvent::PeerConnected(peer),
+                    )
+                }
+                ConnectionsOutEvent::PeerDisconnected(peer) => {
+                    ProtocolRouterInEvent::ConnectionEvent(
+                        ProtocolRouterConnectionEvent::PeerDisconnected(peer),
+                    )
+                }
+            });
         }
 
         // Poll the subscriptions service.
@@ -373,7 +427,11 @@ impl NetworkBehaviour for Behaviour {
                             },
                         ));
 
-                    // TODO: Notify the protocol's routing service of the subscription event.
+                    // Notify the protocol's routing service of the subscription event.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::SubscriptionEvent(
+                            ProtocolRouterSubscriptionEvent::Subscribed(sub.clone()),
+                        ));
 
                     // Send the subscription update to all active peers.
                     tracing::debug!(topic = %sub.topic, "Sending subscription update");
@@ -391,7 +449,11 @@ impl NetworkBehaviour for Behaviour {
                             MessageCacheSubscriptionEvent::Unsubscribed(topic.clone()),
                         ));
 
-                    // TODO: Notify the protocol's service of the unsubscription event.
+                    // Notify the protocol's service of the unsubscription event.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::SubscriptionEvent(
+                            ProtocolRouterSubscriptionEvent::Unsubscribed(topic.clone()),
+                        ));
 
                     // Send the subscription updates to all active peers.
                     tracing::debug!(%topic, "Sending subscription update");
@@ -405,12 +467,20 @@ impl NetworkBehaviour for Behaviour {
                 SubscriptionsOutEvent::PeerSubscribed { peer, topic } => {
                     tracing::debug!(src = %peer, %topic, "Peer subscribed");
 
-                    // TODO: Notify the protocol's service of the peer subscription event.
+                    // Notify the protocol's service of the peer subscription event.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::SubscriptionEvent(
+                            ProtocolRouterSubscriptionEvent::PeerSubscribed { peer, topic },
+                        ));
                 }
                 SubscriptionsOutEvent::PeerUnsubscribed { peer, topic } => {
                     tracing::debug!(src = %peer, %topic, "Peer unsubscribed");
 
-                    // TODO: Notify the protocol's service of the peer unsubscription event.
+                    // Notify the protocol's service of the peer unsubscription event.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::SubscriptionEvent(
+                            ProtocolRouterSubscriptionEvent::PeerUnsubscribed { peer, topic },
+                        ));
                 }
                 SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
                     // Send the subscriptions to the peer.
@@ -426,6 +496,23 @@ impl NetworkBehaviour for Behaviour {
 
         // Poll the message cache service.
         let _ = self.message_cache_service.poll(cx);
+
+        // Poll the protocol service.
+        while let Poll::Ready(event) = self.protocol_router_service.poll(cx) {
+            match event {
+                ProtocolRouterOutEvent::ForwardMessage { message, dest } => {
+                    for dst_peer in dest {
+                        let message = message.clone();
+
+                        let frame = Frame::new_with_messages([
+                            // TODO: Avoid cloning the message here.
+                            (*message).clone(), // Clone the underlying message.
+                        ]);
+                        self.send_frame(dst_peer, frame);
+                    }
+                }
+            }
+        }
 
         // Process the connection handler mailbox.
         if let Some(event) = self.conn_handler_mailbox.pop_front() {
