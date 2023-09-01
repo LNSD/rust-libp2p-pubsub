@@ -5,7 +5,7 @@ use libp2p::PeerId;
 use common::service::Service;
 
 use crate::framing::SubscriptionAction;
-use crate::services::subscriptions::PeerConnectionEvent;
+use crate::services::subscriptions::SubscriptionsPeerConnectionEvent;
 use crate::topic::TopicHash;
 
 use super::events::{ServiceIn, ServiceOut};
@@ -37,7 +37,6 @@ impl SubscriptionsService {
     /// Returns whether the given peer is subscribed to the given topic or not.
     ///
     /// If the peer is not connected, this returns `None`.
-    #[cfg(test)]
     pub fn is_peer_subscribed(&self, peer: &PeerId, topic: &TopicHash) -> Option<bool> {
         self.peers_subscriptions
             .get(peer)
@@ -133,7 +132,7 @@ impl Service for SubscriptionsService {
                 }
             },
             ServiceIn::PeerConnectionEvent(conn_ev) => match conn_ev {
-                PeerConnectionEvent::NewPeerConnected(peer) => {
+                SubscriptionsPeerConnectionEvent::NewPeerConnected(peer) => {
                     // Send all the local node subscriptions to a peer when it connects for the first
                     // time (only if the node is subscribed to at least one topic).
                     if self.local_subscriptions.is_empty() {
@@ -143,7 +142,7 @@ impl Service for SubscriptionsService {
                     let topics = self.local_subscriptions.iter().cloned().collect::<Vec<_>>();
                     return Some(ServiceOut::SendSubscriptions { peer, topics });
                 }
-                PeerConnectionEvent::PeerDisconnected(peer) => {
+                SubscriptionsPeerConnectionEvent::PeerDisconnected(peer) => {
                     // Remove the peer from the peer subscriptions tracker when it disconnects.
                     self.remove_peer(&peer);
                 }

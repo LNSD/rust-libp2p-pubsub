@@ -23,19 +23,19 @@ pub enum ServiceIn {
         action: SubscriptionAction,
     },
     /// A peer connection event.
-    PeerConnectionEvent(PeerConnectionEvent),
+    PeerConnectionEvent(SubscriptionsPeerConnectionEvent),
 }
 
 impl ServiceIn {
     /// Builds a `ServiceIn::PeerConnectionEvent` event.
-    pub fn from_peer_connection_event(ev: impl Into<PeerConnectionEvent>) -> Self {
+    pub fn from_peer_connection_event(ev: impl Into<SubscriptionsPeerConnectionEvent>) -> Self {
         ServiceIn::PeerConnectionEvent(ev.into())
     }
 }
 
 /// Peer connection events consumed by the [`SubscriptionsService`].
 #[derive(Debug, Clone)]
-pub enum PeerConnectionEvent {
+pub enum SubscriptionsPeerConnectionEvent {
     /// New peer connected.
     NewPeerConnected(PeerId),
     /// Peer disconnected.

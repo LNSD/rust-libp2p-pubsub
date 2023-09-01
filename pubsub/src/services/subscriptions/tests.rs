@@ -7,7 +7,8 @@ use common_test::service::noop_context;
 
 use crate::framing::SubscriptionAction;
 use crate::services::subscriptions::{
-    PeerConnectionEvent, SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsService,
+    SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsPeerConnectionEvent,
+    SubscriptionsService,
 };
 use crate::topic::{Hasher, IdentityHash, Topic};
 
@@ -39,14 +40,14 @@ fn new_unsubscribe_seq<H: Hasher>(
 /// Create a new peer connection event sequence for the given peer.
 fn new_peer_connected_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
     [SubscriptionsInEvent::PeerConnectionEvent(
-        PeerConnectionEvent::NewPeerConnected(peer),
+        SubscriptionsPeerConnectionEvent::NewPeerConnected(peer),
     )]
 }
 
 /// Create a new peer disconnection event sequence for the given peer.
 fn new_peer_disconnected_seq(peer: PeerId) -> impl IntoIterator<Item = SubscriptionsInEvent> {
     [SubscriptionsInEvent::PeerConnectionEvent(
-        PeerConnectionEvent::PeerDisconnected(peer),
+        SubscriptionsPeerConnectionEvent::PeerDisconnected(peer),
     )]
 }
 

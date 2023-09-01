@@ -1,5 +1,6 @@
 pub use events::{
-    PeerConnectionEvent, ServiceIn as SubscriptionsInEvent, ServiceOut as SubscriptionsOutEvent,
+    ServiceIn as SubscriptionsInEvent, ServiceOut as SubscriptionsOutEvent,
+    SubscriptionsPeerConnectionEvent,
 };
 pub use service::SubscriptionsService;
 
