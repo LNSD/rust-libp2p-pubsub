@@ -16,13 +16,6 @@ pub enum ServiceIn {
     MessageReceived(Rc<Message>),
 }
 
-impl ServiceIn {
-    /// Create a new `ServiceIn::SubscriptionEvent` event.
-    pub fn from_subscription_event(ev: impl Into<SubscriptionEvent>) -> Self {
-        ServiceIn::SubscriptionEvent(ev.into())
-    }
-}
-
 /// Node subscriptions event.
 #[derive(Clone)]
 pub enum SubscriptionEvent {

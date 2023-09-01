@@ -1,5 +1,7 @@
 use std::collections::{BTreeSet, VecDeque};
+use std::rc::Rc;
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use libp2p::core::Endpoint;
 use libp2p::identity::PeerId;
@@ -12,16 +14,20 @@ use libp2p::swarm::{
 use libp2p::Multiaddr;
 use prost::Message as _;
 
-use common::service::Context as ServiceContext;
+use common::service::{Context as ServiceContext, Service};
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
 use crate::event::Event;
 use crate::framing::{
-    validate_frame_proto, validate_subopts_proto, Frame, FrameProto, Message, SubscriptionAction,
+    validate_frame_proto, validate_message_proto, validate_subopts_proto, Frame, FrameProto,
+    Message, SubscriptionAction,
 };
 use crate::services::connections::{
     ConnectionsInEvent, ConnectionsOutEvent, ConnectionsService, ConnectionsSwarmEvent,
+};
+use crate::services::message_cache::{
+    MessageCacheInEvent, MessageCacheService, MessageCacheSubscriptionEvent,
 };
 use crate::services::subscriptions::{
     SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsPeerConnectionEvent,
@@ -43,6 +49,9 @@ pub struct Behaviour {
     /// Peer subscriptions tracking and management service.
     subscriptions_service: ServiceContext<SubscriptionsService>,
 
+    /// Message cache and deduplication service.
+    message_cache_service: ServiceContext<MessageCacheService>,
+
     /// Connection handler's mailbox.
     ///
     /// It should only contain [`ToSwarm::NotifyHandler`] events to send to the connection handler.
@@ -59,10 +68,18 @@ pub struct Behaviour {
 impl Behaviour {
     /// Creates a new `Behaviour` from the given configuration.
     pub fn new(config: Config) -> Self {
+        let message_cache_service = ServiceContext::new(MessageCacheService::new(
+            config.message_cache_capacity(),
+            config.message_cache_ttl(),
+            config.heartbeat_interval(),
+            Duration::from_secs(0),
+        ));
+
         Self {
             config,
             connections_service: Default::default(),
             subscriptions_service: Default::default(),
+            message_cache_service,
             conn_handler_mailbox: Default::default(),
             behaviour_output_mailbox: Default::default(),
         }
@@ -143,7 +160,40 @@ impl Behaviour {
 
         // 2. Validate, sanitize and process the frame messages'.
         if !frame.publish.is_empty() {
-            // TODO: Implement the frame messages processing.
+            let messages = frame
+                .publish
+                .into_iter()
+                .filter_map(|msg| {
+                    if let Err(err) = validate_message_proto(&msg) {
+                        tracing::trace!(%src, "Received invalid message: {}", err);
+                        return None;
+                    }
+
+                    Some(Into::<Message>::into(msg))
+                })
+                // Filter out messages from topics that we are not subscribed to.
+                .filter(|msg| self.subscriptions_service.is_subscribed(&msg.topic()))
+                // Filter out messages that we have already received.
+                .filter(|msg| !self.message_cache_service.contains(msg))
+                .map(Rc::new)
+                .collect::<Vec<_>>();
+
+            tracing::trace!(%src, messages=messages.len(), "Received messages");
+
+            for message in messages {
+                // Add the message to the message cache.
+                self.message_cache_service
+                    .do_send(MessageCacheInEvent::MessageReceived(message.clone()));
+
+                // TODO: Emit a message received event to the protocol's routing service.
+
+                // Emit a message received event to the behaviour output mailbox.
+                self.behaviour_output_mailbox
+                    .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
+                        source: src,
+                        message: message.as_ref().clone(),
+                    }));
+            }
         }
 
         // 3. Validate, sanitize and process the frame subscription actions.
@@ -314,9 +364,16 @@ impl NetworkBehaviour for Behaviour {
         while let Poll::Ready(sub_event) = self.subscriptions_service.poll(cx) {
             match sub_event {
                 SubscriptionsOutEvent::Subscribed(sub) => {
-                    // TODO: Notify the message cache service of the subscription.
+                    // Notify the message cache service of the subscription.
+                    self.message_cache_service
+                        .do_send(MessageCacheInEvent::SubscriptionEvent(
+                            MessageCacheSubscriptionEvent::Subscribed {
+                                topic: sub.topic.clone(),
+                                message_id_fn: sub.message_id_fn.clone(),
+                            },
+                        ));
 
-                    // TODO: Notify the protocol service of the subscription.
+                    // TODO: Notify the protocol's routing service of the subscription event.
 
                     // Send the subscription update to all active peers.
                     tracing::debug!(topic = %sub.topic, "Sending subscription update");
@@ -328,9 +385,13 @@ impl NetworkBehaviour for Behaviour {
                     }
                 }
                 SubscriptionsOutEvent::Unsubscribed(topic) => {
-                    // TODO: Notify the message cache service of the unsubscription.
+                    // Notify the message cache service of the unsubscription.
+                    self.message_cache_service
+                        .do_send(MessageCacheInEvent::SubscriptionEvent(
+                            MessageCacheSubscriptionEvent::Unsubscribed(topic.clone()),
+                        ));
 
-                    // TODO: Notify the protocol service of the unsubscription.
+                    // TODO: Notify the protocol's service of the unsubscription event.
 
                     // Send the subscription updates to all active peers.
                     tracing::debug!(%topic, "Sending subscription update");
@@ -344,12 +405,12 @@ impl NetworkBehaviour for Behaviour {
                 SubscriptionsOutEvent::PeerSubscribed { peer, topic } => {
                     tracing::debug!(src = %peer, %topic, "Peer subscribed");
 
-                    // TODO: Notify the protocol service of the peer subscription.
+                    // TODO: Notify the protocol's service of the peer subscription event.
                 }
                 SubscriptionsOutEvent::PeerUnsubscribed { peer, topic } => {
                     tracing::debug!(src = %peer, %topic, "Peer unsubscribed");
 
-                    // TODO: Notify the protocol service of the peer unsubscription.
+                    // TODO: Notify the protocol's service of the peer unsubscription event.
                 }
                 SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
                     // Send the subscriptions to the peer.
@@ -362,6 +423,9 @@ impl NetworkBehaviour for Behaviour {
                 }
             }
         }
+
+        // Poll the message cache service.
+        let _ = self.message_cache_service.poll(cx);
 
         // Process the connection handler mailbox.
         if let Some(event) = self.conn_handler_mailbox.pop_front() {
