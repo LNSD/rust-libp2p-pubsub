@@ -10,7 +10,7 @@ use libp2p::{dns, tcp, yamux, Multiaddr, PeerId, Swarm, Transport};
 use floodsub::Protocol as Floodsub;
 use pubsub::{Behaviour, Config, IdentTopic, Message};
 
-// Set up a DNS-enabled TCP transport over the Yamux protocol.
+/// Set up a DNS-enabled TCP transport over the Yamux protocol.
 fn new_dns_tcp_transport(keypair: &Keypair) -> Boxed<(PeerId, StreamMuxerBox)> {
     let transport = dns::TokioDnsConfig::system(tcp::tokio::Transport::new(
         tcp::Config::default().nodelay(true),
@@ -27,7 +27,7 @@ fn new_dns_tcp_transport(keypair: &Keypair) -> Boxed<(PeerId, StreamMuxerBox)> {
         .boxed()
 }
 
-// Create a new Floodsub node with the given keypair.
+/// Create a new Floodsub node with the given keypair.
 fn new_floodsub_node(keypair: &Keypair) -> Swarm<Behaviour<Floodsub>> {
     let peer_id = PeerId::from(keypair.public());
     let transport = new_dns_tcp_transport(keypair);
@@ -38,11 +38,11 @@ fn new_floodsub_node(keypair: &Keypair) -> Swarm<Behaviour<Floodsub>> {
 /// The topic to publish/subscribe to.
 const PUBSUB_TOPIC: &str = "/examples/simple-topic";
 
-/// The multiaddresses to listen on for the publisher and subscriber.
-const PUBLISHER_TCP_LISTEN_MULTIADDDR: &str = "/ip4/0.0.0.0/tcp/60100";
-const PUBLISHER_TCP_DIAL_MULTIADDDR: &str = "/dns4/localhost/tcp/60100";
-const SUBSCRIBER_TCP_LISTEN_MULTIADDDR: &str = "/ip4/0.0.0.0/tcp/60101";
-const SUBSCRIBER_TCP_DIAL_MULTIADDDR: &str = "/dns4/localhost/tcp/60101";
+/// The addresses to listen on and dial to for the publisher and subscriber.
+const PUBLISHER_LISTEN_MULTIADDDR: &str = "/ip4/0.0.0.0/tcp/60100";
+const PUBLISHER_DIAL_MULTIADDDR: &str = "/dns4/localhost/tcp/60100";
+const SUBSCRIBER_LISTEN_MULTIADDDR: &str = "/ip4/0.0.0.0/tcp/60101";
+const SUBSCRIBER_DIAL_MULTIADDDR: &str = "/dns4/localhost/tcp/60101";
 
 /// A simple example where two nodes, one publisher and one subscriber, are subscribed to the same
 /// topic. The publisher sends a message and the subscriber receives it.
@@ -58,9 +58,7 @@ async fn main() {
 
     println!("PUBLISHER > Peer ID: {}", publisher.local_peer_id());
 
-    let listen_addr_publisher = PUBLISHER_TCP_LISTEN_MULTIADDDR
-        .parse::<Multiaddr>()
-        .unwrap();
+    let listen_addr_publisher = PUBLISHER_LISTEN_MULTIADDDR.parse::<Multiaddr>().unwrap();
     publisher.listen_on(listen_addr_publisher.clone()).unwrap();
 
     println!("PUBLISHER > Listen address: {}", listen_addr_publisher);
@@ -78,9 +76,7 @@ async fn main() {
 
     println!("SUBSCRIBER > Peer ID: {}", subscriber.local_peer_id());
 
-    let listen_addr_subscriber = SUBSCRIBER_TCP_LISTEN_MULTIADDDR
-        .parse::<Multiaddr>()
-        .unwrap();
+    let listen_addr_subscriber = SUBSCRIBER_LISTEN_MULTIADDDR.parse::<Multiaddr>().unwrap();
     subscriber
         .listen_on(listen_addr_subscriber.clone())
         .expect("Failed to listen on address");
@@ -95,12 +91,12 @@ async fn main() {
     println!("SUBSCRIBER > Subscribed to topic: {}", pubsub_topic);
 
     // 3. Connect the two nodes.
-    let dial_addr_subscriber = SUBSCRIBER_TCP_DIAL_MULTIADDDR.parse::<Multiaddr>().unwrap();
+    let dial_addr_subscriber = SUBSCRIBER_DIAL_MULTIADDDR.parse::<Multiaddr>().unwrap();
     publisher.dial(dial_addr_subscriber.clone()).unwrap();
 
     println!("PUBLISHER > Dialing address: {}", dial_addr_subscriber);
 
-    let dial_addr_publisher = PUBLISHER_TCP_DIAL_MULTIADDDR.parse::<Multiaddr>().unwrap();
+    let dial_addr_publisher = PUBLISHER_DIAL_MULTIADDDR.parse::<Multiaddr>().unwrap();
     subscriber.dial(dial_addr_publisher.clone()).unwrap();
 
     println!("SUBSCRIBER > Dialing address: {}", dial_addr_publisher);
