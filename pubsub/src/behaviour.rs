@@ -230,7 +230,7 @@ impl<P: Protocol> Behaviour<P> {
                 // Emit a message received event to the behaviour output mailbox.
                 self.behaviour_output_mailbox
                     .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
-                        source: src,
+                        src,
                         message: (*message).clone(), // Clone the underlying message.
                     }));
             }

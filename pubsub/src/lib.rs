@@ -1,6 +1,6 @@
 pub use behaviour::Behaviour;
 pub use config::Config;
-pub use event::Event;
+pub use event::{Event, Message};
 pub use message_id::{default_message_id_fn, MessageId, MessageIdFn};
 pub use protocol::{
     Protocol, ProtocolId, ProtocolRouter, ProtocolRouterConnectionEvent, ProtocolRouterInEvent,

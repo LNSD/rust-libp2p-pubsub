@@ -4,6 +4,7 @@ use pubsub::{Protocol, ProtocolId, ProtocolRouterInEvent, ProtocolRouterOutEvent
 /// The protocol ID for the noop protocol.
 pub const NOOP_PROTOCOL_ID: &str = "/noop/1.0.0";
 
+/// The noop protocol is a dummy protocol implementation for testing purposes.
 #[derive(Default)]
 pub struct NoopProtocol;
 
