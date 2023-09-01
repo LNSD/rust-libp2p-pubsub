@@ -10,6 +10,7 @@ mod frame;
 mod handler;
 mod message_id;
 mod proto;
+mod router;
 mod routing;
 mod seqno;
 mod topic;
