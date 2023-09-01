@@ -24,3 +24,4 @@ common-test = { path = "../common-test" }
 itertools = "0.11.0"
 rand = "0.8.5"
 tokio = { workspace = true, features = ["macros", "rt"] }
+tracing-futures = "0.2.5"
