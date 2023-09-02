@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use futures::StreamExt;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::Boxed;
@@ -31,7 +33,7 @@ fn new_dns_tcp_transport(keypair: &Keypair) -> Boxed<(PeerId, StreamMuxerBox)> {
 fn new_floodsub_node(keypair: &Keypair) -> Swarm<Behaviour<Floodsub>> {
     let peer_id = PeerId::from(keypair.public());
     let transport = new_dns_tcp_transport(keypair);
-    let behaviour = Behaviour::new(Config::default(), Floodsub::default());
+    let behaviour = Behaviour::new(Config::default(), Floodsub);
     SwarmBuilder::with_tokio_executor(transport, behaviour, peer_id).build()
 }
 
@@ -248,7 +250,7 @@ async fn main() {
         _ = publish_fut => {}
         _ = relay_fut => {}
         _ = subscribers_fut => {
-            return;
+            exit(0);
         }
     }
 }

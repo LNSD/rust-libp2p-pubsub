@@ -312,7 +312,7 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     //// When
     libp2p_publisher
         .behaviour_mut()
-        .publish(libp2p_topic.hash(), message_payload.clone())
+        .publish(libp2p_topic.hash(), *message_payload)
         .expect("publish the message");
 
     let sub_events = wait_mesh_libp2p_gossipsub_message_propagation(
