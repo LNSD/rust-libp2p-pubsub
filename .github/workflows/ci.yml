@@ -71,12 +71,14 @@ jobs:
 
       - name: Upload unit tests coverage report to codecov
         uses: codecov/codecov-action@v3
+        if: matrix.rust == 'stable'
         with:
           files: ut-lcov.info
           flags: unit
 
       - name: Upload integration tests coverage report to codecov
         uses: codecov/codecov-action@v3
+        if: matrix.rust == 'stable'
         with:
           files: it-lcov.info
           flags: integration
