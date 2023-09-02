@@ -197,8 +197,8 @@ where
     }
 }
 
-/// Wait for all swarms' [`SwarmEvent:NewListenAddress`] event to be emitted and return the new
-/// listen addresses.
+/// Wait for all swarms' to emit a [`SwarmEvent::NewListenAddr`] event and return the new listen
+/// addresses.
 #[tracing::instrument(skip_all)]
 pub async fn wait_for_start_listening<B1, E1, B2, E2>(
     swarm1: &mut Swarm<B1>,
