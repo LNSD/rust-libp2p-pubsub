@@ -110,7 +110,8 @@ where
     pub fn contains_key(&self, id: &K) -> bool {
         self.cache
             .get(id)
-            .is_some_and(|entry| entry.timestamp.elapsed() <= self.ttl)
+            .map(|entry| entry.timestamp.elapsed() <= self.ttl)
+            .unwrap_or(false)
     }
 
     /// Returns a reference to the message with the given ID, if it exists in the cache and has not

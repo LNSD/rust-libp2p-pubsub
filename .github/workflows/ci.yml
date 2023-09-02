@@ -16,12 +16,15 @@ jobs:
   build_and_test:
     name: "build and test"
     runs-on: ubuntu-latest
+    strategy:
+      matrix: { rust: [ "1.65", "stable" ] }
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ matrix.rust }}
           components: llvm-tools-preview
 
       - name: Cache Cargo build files
@@ -61,19 +64,21 @@ jobs:
         run: cargo check --all-targets --all-features
 
       - name: Run unit tests
-        run: cargo llvm-cov nextest r --lib --lcov --output-path ut-lcov.info
+        run: cargo llvm-cov nextest r --lib --lcov --output-path unit-lcov.info
 
       - name: Run integration tests
         run: cargo llvm-cov nextest r --test '*' --lcov --output-path it-lcov.info
 
       - name: Upload unit tests coverage report to codecov
         uses: codecov/codecov-action@v3
+        if: matrix.rust == 'stable'
         with:
-          files: ut-lcov.info
+          files: unit-lcov.info
           flags: unit
 
       - name: Upload integration tests coverage report to codecov
         uses: codecov/codecov-action@v3
+        if: matrix.rust == 'stable'
         with:
           files: it-lcov.info
           flags: integration
