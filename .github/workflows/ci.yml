@@ -17,7 +17,7 @@ jobs:
     name: "build and test"
     runs-on: ubuntu-latest
     strategy:
-      matrix: { rust: [ "1.65", "stable" ] }
+      matrix: { rust: [ "1.66", "stable" ] }
     steps:
       - uses: actions/checkout@v3
 
