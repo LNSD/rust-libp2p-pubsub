@@ -169,7 +169,7 @@ async fn main() {
         }
     };
 
-    // 4. Poll the two futures until the message is received.
+    // 6. Poll the two futures until the message is received.
     tokio::select! {
         _ = publish_fut => {}
         _ = subscriber_fut => {
