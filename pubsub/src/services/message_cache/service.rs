@@ -6,7 +6,7 @@ use std::time::Duration;
 use futures::StreamExt;
 
 use common::heartbeat::Heartbeat;
-use common::service::Service;
+use common::service::{OnEventCtx, PollCtx, Service};
 use common::ttl_cache::Cache;
 
 use crate::framing::Message;
@@ -67,7 +67,7 @@ impl Service for MessageCacheService {
     type InEvent = ServiceIn;
     type OutEvent = ();
 
-    fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
+    fn on_event(&mut self, _svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
         match ev {
             ServiceIn::SubscriptionEvent(sub_ev) => match sub_ev {
                 SubscriptionEvent::Subscribed {
@@ -87,7 +87,7 @@ impl Service for MessageCacheService {
                 let msg_id = match self.message_id_fn.get(&message.topic()) {
                     None => {
                         // Unknown topic
-                        return None;
+                        return;
                     }
                     Some(id_fn) => id_fn(&message),
                 };
@@ -96,11 +96,13 @@ impl Service for MessageCacheService {
                 self.cache.put(msg_id, ());
             }
         }
-
-        None
     }
 
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Self::OutEvent> {
+    fn poll(
+        &mut self,
+        _svc_cx: &mut PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Self::OutEvent> {
         if self.heartbeat.poll_next_unpin(cx).is_ready() {
             self.cache.clear_expired_entries();
         }

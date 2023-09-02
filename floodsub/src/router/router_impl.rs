@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use libp2p::identity::PeerId;
 
-use common::service::Service;
+use common::service::{OnEventCtx, Service};
 use pubsub::{
     ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent, TopicHash,
@@ -90,7 +90,7 @@ impl Service for Router {
     type InEvent = ProtocolRouterInEvent;
     type OutEvent = ProtocolRouterOutEvent;
 
-    fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
+    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
         match ev {
             ProtocolRouterInEvent::ConnectionEvent(conn_ev) => {
                 if let ProtocolRouterConnectionEvent::PeerDisconnected(peer) = conn_ev {
@@ -114,7 +114,7 @@ impl Service for Router {
             ProtocolRouterInEvent::MessageReceived { src, message } => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
-                    return None;
+                    return;
                 }
 
                 if let Some(peers) = self.get_peers_subscribed(&topic) {
@@ -124,10 +124,10 @@ impl Service for Router {
                         .cloned()
                         .collect::<Vec<_>>();
                     if peers.is_empty() {
-                        return None;
+                        return;
                     }
 
-                    return Some(ProtocolRouterOutEvent::ForwardMessage {
+                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessage {
                         dest: peers,
                         message,
                     });
@@ -136,19 +136,17 @@ impl Service for Router {
             ProtocolRouterInEvent::MessagePublished(message) => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
-                    return None;
+                    return;
                 }
 
                 if let Some(peers) = self.get_peers_subscribed(&topic) {
                     let peers = peers.iter().cloned().collect::<Vec<_>>();
-                    return Some(ProtocolRouterOutEvent::ForwardMessage {
+                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessage {
                         dest: peers,
                         message,
                     });
                 }
             }
         }
-
-        None
     }
 }

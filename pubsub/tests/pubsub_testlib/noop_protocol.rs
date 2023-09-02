@@ -1,4 +1,4 @@
-use common::service::Service;
+use common::service::{OnEventCtx, Service};
 use pubsub::{Protocol, ProtocolId, ProtocolRouterInEvent, ProtocolRouterOutEvent};
 
 /// The protocol ID for the noop protocol.
@@ -32,7 +32,7 @@ impl Service for NoopProtocolRouter {
     type InEvent = ProtocolRouterInEvent;
     type OutEvent = ProtocolRouterOutEvent;
 
-    fn on_event(&mut self, _ev: Self::InEvent) -> Option<Self::OutEvent> {
-        None
+    fn on_event(&mut self, _svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, _ev: Self::InEvent) {
+        // No-op
     }
 }

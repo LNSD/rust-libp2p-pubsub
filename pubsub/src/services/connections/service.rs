@@ -4,12 +4,10 @@ use libp2p::identity::PeerId;
 use libp2p::swarm::ConnectionId;
 use libp2p::Multiaddr;
 
-use common::service::Service;
-
-use crate::services::connections::events::SwarmEvent;
+use common::service::{OnEventCtx, Service};
 
 use super::connection::{Connection, ConnectionState};
-use super::events::{ServiceIn, ServiceOut};
+use super::events::{ServiceIn, ServiceOut, SwarmEvent};
 
 /// Manages the connections of the floodsub protocol behaviour.
 #[derive(Debug, Default)]
@@ -177,7 +175,7 @@ impl Service for ConnectionsService {
     type OutEvent = ServiceOut;
 
     #[tracing::instrument(skip_all)]
-    fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
+    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
         match ev {
             ServiceIn::EstablishedInboundConnection {
                 connection_id,
@@ -215,7 +213,7 @@ impl Service for ConnectionsService {
 
                     // If this is the first connection with the peer, emit a `NewPeerConnected` event.
                     if self.peer_connections_count(&peer_id) == 1 {
-                        return Some(ServiceOut::NewPeerConnected(peer_id));
+                        svc_cx.emit(ServiceOut::NewPeerConnected(peer_id));
                     }
                 }
                 SwarmEvent::ConnectionClosed {
@@ -227,7 +225,7 @@ impl Service for ConnectionsService {
 
                     // If this was the last connection with the peer, emit a `PeerDisconnected` event.
                     if self.peer_connections_count(&peer_id) == 0 {
-                        return Some(ServiceOut::PeerDisconnected(peer_id));
+                        svc_cx.emit(ServiceOut::PeerDisconnected(peer_id));
                     }
                 }
                 SwarmEvent::AddressChange {
@@ -240,7 +238,5 @@ impl Service for ConnectionsService {
                 _ => {}
             },
         }
-
-        None
     }
 }

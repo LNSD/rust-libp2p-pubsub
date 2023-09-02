@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use libp2p::PeerId;
 
-use common::service::Service;
+use common::service::{OnEventCtx, Service};
 
 use crate::framing::SubscriptionAction;
 use crate::services::subscriptions::SubscriptionsPeerConnectionEvent;
@@ -99,20 +99,20 @@ impl Service for SubscriptionsService {
     type InEvent = ServiceIn;
     type OutEvent = ServiceOut;
 
-    fn on_event(&mut self, ev: Self::InEvent) -> Option<Self::OutEvent> {
+    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
         match ev {
             ServiceIn::SubscriptionRequest(sub) => {
                 // Emit a [`SubscriptionsOutEvent::Subscribed`] event if the node was not already
                 // subscribed to the topic.
                 if self.add_local_subscription(sub.topic.clone()) {
-                    return Some(ServiceOut::Subscribed(sub));
+                    svc_cx.emit(ServiceOut::Subscribed(sub));
                 }
             }
             ServiceIn::UnsubscriptionRequest(topic) => {
                 // Emit a [`SubscriptionsOutEvent::Unsubscribed`] event if the node was subscribed to the
                 // topic.
                 if self.remove_local_subscription(topic.clone()) {
-                    return Some(ServiceOut::Unsubscribed(topic));
+                    svc_cx.emit(ServiceOut::Unsubscribed(topic));
                 }
             }
             ServiceIn::PeerSubscriptionRequest { src: peer, action } => match action {
@@ -120,14 +120,14 @@ impl Service for SubscriptionsService {
                     // Emit a [`SubscriptionsOutEvent::PeerSubscribed`] event if the peer was not already
                     // subscribed to the topic.
                     if self.add_peer_subscription(peer, topic.clone()) {
-                        return Some(ServiceOut::PeerSubscribed { peer, topic });
+                        svc_cx.emit(ServiceOut::PeerSubscribed { peer, topic });
                     }
                 }
                 SubscriptionAction::Unsubscribe(topic) => {
                     // Emit a [`SubscriptionsOutEvent::PeerUnsubscribed`] event if the peer was subscribed to
                     // the topic.
                     if self.remove_peer_subscription(&peer, &topic) {
-                        return Some(ServiceOut::PeerUnsubscribed { peer, topic });
+                        svc_cx.emit(ServiceOut::PeerUnsubscribed { peer, topic });
                     }
                 }
             },
@@ -136,11 +136,11 @@ impl Service for SubscriptionsService {
                     // Send all the local node subscriptions to a peer when it connects for the first
                     // time (only if the node is subscribed to at least one topic).
                     if self.local_subscriptions.is_empty() {
-                        return None;
+                        return;
                     }
 
                     let topics = self.local_subscriptions.iter().cloned().collect::<Vec<_>>();
-                    return Some(ServiceOut::SendSubscriptions { peer, topics });
+                    svc_cx.emit(ServiceOut::SendSubscriptions { peer, topics });
                 }
                 SubscriptionsPeerConnectionEvent::PeerDisconnected(peer) => {
                     // Remove the peer from the peer subscriptions tracker when it disconnects.
@@ -148,7 +148,5 @@ impl Service for SubscriptionsService {
                 }
             },
         }
-
-        None
     }
 }
