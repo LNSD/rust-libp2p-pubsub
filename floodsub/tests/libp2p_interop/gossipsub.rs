@@ -332,9 +332,9 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
         // Assert the propagation peer
         assert_eq!(src, libp2p_publisher.local_peer_id(), "The message should be propagated by the publisher");
         // Assert the message
-        assert!(message.sequence_number().is_none());
-        assert!(message.source().is_none());
-        assert_eq!(message.topic_str(), topic.hash().as_str());
-        assert_eq!(message.data()[..], message_payload[..]);
+        assert!(message.sequence_number.is_none());
+        assert!(message.from.is_none());
+        assert_eq!(message.topic.as_str(), topic.hash().as_str());
+        assert_eq!(message.data, message_payload[..]);
     });
 }
