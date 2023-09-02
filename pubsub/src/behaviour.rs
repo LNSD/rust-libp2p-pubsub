@@ -149,7 +149,7 @@ impl<P: Protocol> Behaviour<P> {
 
     /// Publish a message to the network.
     pub fn publish(&mut self, message: Message) -> anyhow::Result<()> {
-        let topic = message.topic();
+        let topic = message.topic.clone();
 
         tracing::debug!(%topic, "Publishing message");
 
@@ -162,6 +162,8 @@ impl<P: Protocol> Behaviour<P> {
         if self.connections_service.active_peers_count() == 0 {
             return Err(anyhow::anyhow!("No active connections"));
         }
+
+        let message = FrameMessage::from(message);
 
         // Check if message was already published.
         if self.message_cache_service.contains(&message) {
@@ -232,7 +234,7 @@ impl<P: Protocol> Behaviour<P> {
                 self.behaviour_output_mailbox
                     .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
                         src,
-                        message: (*message).clone(), // Clone the underlying message.
+                        message: Message::from((*message).clone()), // Clone the underlying message.
                     }));
             }
         }
@@ -588,6 +590,30 @@ impl From<ConnectionsOutEvent> for SubscriptionsPeerConnectionEvent {
             ConnectionsOutEvent::PeerDisconnected(peer) => {
                 SubscriptionsPeerConnectionEvent::PeerDisconnected(peer)
             }
+        }
+    }
+}
+
+impl From<Message> for FrameMessage {
+    fn from(message: Message) -> Self {
+        let mut msg = Self::new(message.topic, message.data);
+        msg.set_sequence_number(message.sequence_number);
+        msg.set_key(message.key);
+        msg.set_source(message.from);
+        msg.set_signature(message.signature);
+        msg
+    }
+}
+
+impl From<FrameMessage> for Message {
+    fn from(message: FrameMessage) -> Self {
+        Self {
+            topic: message.topic(),
+            data: message.data().to_vec(),
+            sequence_number: message.sequence_number(),
+            key: message.key().map(ToOwned::to_owned),
+            from: message.source(),
+            signature: message.signature().map(ToOwned::to_owned),
         }
     }
 }
