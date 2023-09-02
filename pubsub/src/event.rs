@@ -1,17 +1,21 @@
 use libp2p::identity::PeerId;
 
-// Re-export temporarily the `Message` type from `framing` until we have a proper message type
-// TODO: Add a different message type for the application events
-pub use crate::framing::Message;
+use crate::message::Message;
 
-/// Events emitted by the pubsub behaviour.
+/// This enum represents events that can be emitted by the pubsub
+/// [`Behaviour`](super::behaviour::Behaviour).
 #[derive(Debug)]
 pub enum Event {
-    /// Message received.
+    /// Emitted by the pubsub behaviour when a message associated with a topic the node is
+    /// subscribed to is received.
     MessageReceived {
         /// Peer that propagated the message.
+        ///
+        /// Do not confuse with the original author of the message, which is optionally included in
+        /// the message itself in the message's `from` field.
+        /// field.
         src: PeerId,
-        /// The message.
+        /// The message itself.
         message: Message,
     },
 }

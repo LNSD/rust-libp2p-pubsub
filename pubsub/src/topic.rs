@@ -3,10 +3,13 @@ use std::fmt;
 use std::str::FromStr;
 
 use base64::prelude::*;
-use prost::Message;
+use prost::Message as _;
 use sha2::{Digest, Sha256};
 
 use crate::framing::TopicDescriptorProto;
+
+pub type IdentTopic = Topic<IdentityHash>;
+pub type Sha256Topic = Topic<Sha256Hash>;
 
 /// A generic trait that can be extended for various hashing frame for a topic.
 pub trait Hasher {

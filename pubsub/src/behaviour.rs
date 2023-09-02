@@ -21,8 +21,9 @@ use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Hand
 use crate::event::Event;
 use crate::framing::{
     validate_frame_proto, validate_message_proto, validate_subopts_proto, Frame, FrameProto,
-    Message, SubscriptionAction,
+    Message as FrameMessage, SubscriptionAction,
 };
+use crate::message::Message;
 use crate::protocol::{
     Protocol, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent,
@@ -204,7 +205,7 @@ impl<P: Protocol> Behaviour<P> {
                         return None;
                     }
 
-                    Some(Into::<Message>::into(msg))
+                    Some(FrameMessage::from(msg))
                 })
                 // Filter out messages from topics that we are not subscribed to.
                 .filter(|msg| self.subscriptions_service.is_subscribed(&msg.topic()))
