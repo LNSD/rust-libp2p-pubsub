@@ -8,8 +8,8 @@ use pubsub::{
     ProtocolRouterSubscriptionEvent, TopicHash,
 };
 
-/// The `Router` struct is the implementation of the [`ProtocolRouter`] trait for the floodsub
-/// protocol.
+/// The `Router` struct is the implementation of the [`pubsub::ProtocolRouter`] trait for the
+/// floodsub protocol.
 #[derive(Default)]
 pub struct Router {
     /// The topics this router is subscribed to.
