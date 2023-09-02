@@ -38,34 +38,3 @@ impl Message {
         }
     }
 }
-
-// TODO: Remove after updating the floodsub crate
-impl Message {
-    pub fn data(&self) -> &[u8] {
-        &self.data
-    }
-
-    pub fn topic(&self) -> TopicHash {
-        self.topic.clone()
-    }
-
-    pub fn source(&self) -> Option<PeerId> {
-        self.from
-    }
-
-    pub fn sequence_number(&self) -> Option<u64> {
-        self.sequence_number
-    }
-
-    pub fn signature(&self) -> Option<Vec<u8>> {
-        self.signature.clone()
-    }
-
-    pub fn key(&self) -> Option<Vec<u8>> {
-        self.key.clone()
-    }
-
-    pub fn topic_str(&self) -> &str {
-        self.topic.as_str()
-    }
-}
