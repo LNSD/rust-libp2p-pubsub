@@ -105,6 +105,12 @@ where
             .count()
     }
 
+    /// Returns if the cache is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns `true` if the cache contains a non-expired message with the given ID.
     #[must_use]
     pub fn contains_key(&self, id: &K) -> bool {
