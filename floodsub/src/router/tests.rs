@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use assert_matches::assert_matches;
 use libp2p::identity::PeerId;
-use rand::Rng;
+use rand::random;
 
 use common_test as testlib;
 use common_test::service::noop_context;
 use pubsub::{
-    Message, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
+    FrameMessage, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent, TopicHash,
 };
 
@@ -15,10 +15,7 @@ use super::Router;
 
 /// Create a new random test topic.
 fn new_test_topic() -> TopicHash {
-    TopicHash::from_raw(format!(
-        "/pubsub/2/it-pubsub-test-{}",
-        rand::thread_rng().gen::<u32>()
-    ))
+    TopicHash::from_raw(format!("/pubsub/2/it-pubsub-test-{}", random::<u32>()))
 }
 
 /// Create a new random peer ID.
@@ -27,8 +24,8 @@ fn new_test_peer_id() -> PeerId {
 }
 
 /// Create a random message with the given topic.
-fn new_test_message(topic: TopicHash) -> Message {
-    Message::new(topic, b"test-payload".to_vec())
+fn new_test_message(topic: TopicHash) -> FrameMessage {
+    FrameMessage::new(topic, b"test-payload".to_vec())
 }
 
 /// Create a new message received sequence for the given topic.
