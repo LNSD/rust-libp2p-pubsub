@@ -1,10 +1,14 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["config:base"],
-  schedule: [
-    "At 8:00 AM"
+  extends: [
+    "config:base",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)"
   ],
   timezone: "Europe/Madrid",
+  schedule: [
+    "before 8am"
+  ],
   rebaseStalePrs: true,
   lockFileMaintenance: {
     enabled: true,
