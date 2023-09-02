@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use libp2p::identity::PeerId;
 
-use crate::framing::Message;
+use crate::framing::Message as FrameMessage;
 
 /// Macro for declaring message id types
 macro_rules! declare_message_id_type {
@@ -58,9 +58,9 @@ macro_rules! declare_message_id_type {
 // A type for pubsub message IDs.
 declare_message_id_type!(MessageId);
 
-pub type MessageIdFn = dyn Fn(&Message) -> MessageId + Send + Sync + 'static;
+pub type MessageIdFn = dyn Fn(&FrameMessage) -> MessageId + Send + Sync + 'static;
 
-pub fn default_message_id_fn(msg: &Message) -> MessageId {
+pub fn default_message_id_fn(msg: &FrameMessage) -> MessageId {
     // default message id is: source + sequence number
     // NOTE: If either the peer_id or source is not provided, we set to 0;
     let mut source_string = if let Some(peer_id) = msg.source().as_ref() {
@@ -76,18 +76,18 @@ pub fn default_message_id_fn(msg: &Message) -> MessageId {
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
+    use rand::random;
 
-    use crate::IdentTopic;
+    use crate::topic::IdentTopic;
 
     use super::*;
 
     fn new_test_topic() -> IdentTopic {
-        IdentTopic::new(format!("/test-{}/0.1.0", rand::thread_rng().gen::<u32>()))
+        IdentTopic::new(format!("/test-{}/0.1.0", random::<u32>()))
     }
 
-    fn new_test_message(source: Option<PeerId>, seqno: Option<u64>) -> Message {
-        let mut message = Message::new(new_test_topic(), b"test-data".to_vec());
+    fn new_test_message(source: Option<PeerId>, seqno: Option<u64>) -> FrameMessage {
+        let mut message = FrameMessage::new(new_test_topic(), b"test-data".to_vec());
         message.set_source(source);
         message.set_sequence_number(seqno);
         message

@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
-use crate::framing::Message;
+use crate::framing::Message as FrameMessage;
 use crate::message_id::{MessageId, MessageIdFn};
 use crate::topic::{Hasher, Topic, TopicHash};
 
@@ -68,7 +68,7 @@ impl SubscriptionBuilder {
     /// message id.
     pub fn message_id_fn<F>(&mut self, id_fn: F) -> &mut Self
     where
-        F: Fn(&Message) -> MessageId + Send + Sync + 'static,
+        F: Fn(&FrameMessage) -> MessageId + Send + Sync + 'static,
     {
         self.message_id_fn = Some(Rc::new(id_fn));
         self
