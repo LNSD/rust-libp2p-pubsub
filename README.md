@@ -13,7 +13,7 @@ This is an alternative implementation of [rust-libp2p](https://github.com/libp2p
 
 To build this project you need the following:
 
-- Rust toolchain. The required version is automatically enforced by the _rust-toolchain.toml_ file.
+- Rust toolchain (1.65+)
 - [Buf CLI](https://docs.buf.build/installation)
 - [Protobuf Compiler (protoc)](https://grpc.io/docs/protoc-installation/)
 - [Protoc prost plugins (protoc-gen-prost)](https://github.com/neoeinstein/protoc-gen-prost):
@@ -35,6 +35,19 @@ is performed by the `build.rs` script and is run automatically when building the
 > If the `cargo build` command fails, check first you have all the [build requirements](#build-requirements) installed.
 
 The proto files are located in a separate repository: https://github.com/LNSD/waku-proto/tree/rust-waku
+
+## Supported Rust Versions
+
+This repository is built against the latest stable release. The minimum supported
+version is **1.65**. The current version is not guaranteed to build on Rust versions
+earlier than the minimum supported version.
+
+This project follows the same compiler support policies as the Tokio ecosystem.
+The current stable Rust compiler and the three most recent minor versions before
+it will always be supported. For example, if the current stable compiler version
+is 1.69, the minimum supported version will not be increased past 1.66, three minor
+versions prior. Increasing the minimum supported compiler version is not considered
+a semantic versioning breaking change as long as doing so complies with this policy.
 
 ## License
 
