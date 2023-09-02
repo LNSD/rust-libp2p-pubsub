@@ -13,7 +13,7 @@ This is an alternative implementation of [rust-libp2p](https://github.com/libp2p
 
 To build this project you need the following:
 
-- Rust toolchain (1.65+)
+- Rust toolchain (1.66+)
 - [Buf CLI](https://docs.buf.build/installation)
 - [Protobuf Compiler (protoc)](https://grpc.io/docs/protoc-installation/)
 - [Protoc prost plugins (protoc-gen-prost)](https://github.com/neoeinstein/protoc-gen-prost):
@@ -39,7 +39,7 @@ The proto files are located in a separate repository: https://github.com/LNSD/wa
 ## Supported Rust Versions
 
 This repository is built against the latest stable release. The minimum supported
-version is **1.65**. The current version is not guaranteed to build on Rust versions
+version is **1.66**. The current version is not guaranteed to build on Rust versions
 earlier than the minimum supported version.
 
 This project follows the same compiler support policies as the Tokio ecosystem.
