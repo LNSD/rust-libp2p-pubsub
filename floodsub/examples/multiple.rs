@@ -71,11 +71,10 @@ async fn new_subscriber_task(sub: char, mut subscriber: Swarm<Behaviour<Floodsub
             }
             SwarmEvent::Behaviour(event) => match event {
                 pubsub::Event::MessageReceived { message, .. } => {
-                    let msg_data = String::from_utf8_lossy(message.data());
+                    let msg_data = String::from_utf8_lossy(&message.data);
                     println!(
                         "SUBSCRIBER {sub} > Received message: {} (topic: {})",
-                        msg_data,
-                        message.topic()
+                        msg_data, message.topic
                     );
                     return;
                 }
@@ -224,11 +223,10 @@ async fn main() {
                 }
                 SwarmEvent::Behaviour(event) => match event {
                     pubsub::Event::MessageReceived { message, .. } => {
-                        let msg_data = String::from_utf8_lossy(message.data());
+                        let msg_data = String::from_utf8_lossy(&message.data);
                         println!(
                             "RELAY > Received message: {} (topic: {})",
-                            msg_data,
-                            message.topic()
+                            msg_data, message.topic
                         );
                     }
                 },

@@ -157,11 +157,10 @@ async fn main() {
                 }
                 SwarmEvent::Behaviour(event) => match event {
                     pubsub::Event::MessageReceived { message, .. } => {
-                        let msg_data = String::from_utf8_lossy(message.data());
+                        let msg_data = String::from_utf8_lossy(&message.data);
                         println!(
                             "SUBSCRIBER > Received message: {} (topic: {})",
-                            msg_data,
-                            message.topic()
+                            msg_data, message.topic
                         );
                         return;
                     }
