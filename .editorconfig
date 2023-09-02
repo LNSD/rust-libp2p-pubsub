@@ -28,3 +28,11 @@ indent_size = 2
 [*.{yml,yaml}]
 indent_size = 2
 
+[Cargo.lock]
+indent_size = unset
+
+[LICENSE*]
+indent_size = unset
+
+[README.md]
+indent_size = 2
