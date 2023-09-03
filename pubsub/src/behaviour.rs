@@ -412,7 +412,7 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
                             ProtocolRouterSubscriptionEvent::PeerUnsubscribed { peer, topic },
                         ));
                 }
-                SubscriptionsOutEvent::SendSubscriptions { peer: dest, topics } => {
+                SubscriptionsOutEvent::SendSubscriptions { dest, topics } => {
                     // Send the subscriptions to the peer.
                     tracing::debug!(%dest, ?topics, "Sending subscriptions");
 

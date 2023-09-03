@@ -141,7 +141,7 @@ impl Service for SubscriptionsService {
                     }
 
                     let topics = self.local_subscriptions.iter().cloned().collect::<Vec<_>>();
-                    svc_cx.emit(ServiceOut::SendSubscriptions { peer, topics });
+                    svc_cx.emit(ServiceOut::SendSubscriptions { dest: peer, topics });
                 }
                 SubscriptionsPeerConnectionEvent::PeerDisconnected(peer) => {
                     // Remove the peer from the peer subscriptions tracker when it disconnects.
