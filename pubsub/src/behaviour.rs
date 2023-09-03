@@ -14,7 +14,7 @@ use libp2p::swarm::{
 use libp2p::Multiaddr;
 use prost::Message as _;
 
-use common::service::Context as ServiceContext;
+use common::service::{BufferedContext, ServiceContext};
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
@@ -46,16 +46,16 @@ pub struct Behaviour<P: Protocol> {
     config: Config,
 
     /// Peer connections tracking and management service.
-    connections_service: ServiceContext<ConnectionsService>,
+    connections_service: BufferedContext<ConnectionsService>,
 
     /// Peer subscriptions tracking and management service.
-    subscriptions_service: ServiceContext<SubscriptionsService>,
+    subscriptions_service: BufferedContext<SubscriptionsService>,
 
     /// Message cache and deduplication service.
-    message_cache_service: ServiceContext<MessageCacheService>,
+    message_cache_service: BufferedContext<MessageCacheService>,
 
     /// The pubsub protocol router service.
-    protocol_router_service: ServiceContext<P::RouterService>,
+    protocol_router_service: BufferedContext<P::RouterService>,
 
     /// Connection handler's mailbox.
     ///
@@ -73,13 +73,13 @@ pub struct Behaviour<P: Protocol> {
 impl<P: Protocol> Behaviour<P> {
     /// Creates a new `Behaviour` from the given configuration and protocol.
     pub fn new(config: Config, protocol: P) -> Self {
-        let message_cache_service = ServiceContext::new(MessageCacheService::new(
+        let message_cache_service = BufferedContext::new(MessageCacheService::new(
             config.message_cache_capacity(),
             config.message_cache_ttl(),
             config.heartbeat_interval(),
             Duration::from_secs(0),
         ));
-        let protocol_router_service = ServiceContext::new(protocol.router());
+        let protocol_router_service = BufferedContext::new(protocol.router());
 
         Self {
             config,

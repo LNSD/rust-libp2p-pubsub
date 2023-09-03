@@ -4,20 +4,19 @@ use std::time::Duration;
 use rand::Rng;
 use sha2::{Digest, Sha256};
 
-use common::service::Context as ServiceContext;
+use common::service::BufferedContext;
 use common_test as testlib;
 
 use crate::framing::Message;
-use crate::message_id::MessageId;
-use crate::message_id::MessageIdFn;
+use crate::message_id::{MessageId, MessageIdFn};
 use crate::topic::TopicHash;
 
 use super::events::{ServiceIn as MessageCacheInEvent, SubscriptionEvent};
 use super::service::MessageCacheService;
 
 // Create a test instance of the `MessageCacheService`.
-fn new_test_service() -> ServiceContext<MessageCacheService> {
-    ServiceContext::new(MessageCacheService::new(
+fn new_test_service() -> BufferedContext<MessageCacheService> {
+    BufferedContext::new(MessageCacheService::new(
         1024,
         Duration::from_secs(5),
         Duration::from_secs(1),
@@ -29,8 +28,8 @@ fn new_test_service() -> ServiceContext<MessageCacheService> {
 fn new_test_service_with_ttl_and_heartbeat(
     ttl: Duration,
     heartbeat_interval: Duration,
-) -> ServiceContext<MessageCacheService> {
-    ServiceContext::new(MessageCacheService::new(
+) -> BufferedContext<MessageCacheService> {
+    BufferedContext::new(MessageCacheService::new(
         1024,
         ttl,
         heartbeat_interval,

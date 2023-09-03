@@ -3,15 +3,15 @@
 //! The [`Service`](service::Service) trait is the main abstraction used by the this crate.
 //! It is used to define the behavior of the different components of a libp2p protocol.
 //!
-//! Services are intended to be used wrapped in a [`Context`](service::Context), which provides the
-//! with a mailbox for input events and a mailbox for output events. The
-//! [`Context`](service::Context) is in charge of polling the service for events and processing the
-//! mailbox events.
+//! Services are intended to be used wrapped in a [`ServiceContext`](service::ServiceContext)
+//! implementation, which typically provides them with a mailbox for input events and a mailbox for
+//! output events. Additionally, the wrapping [`ServiceContext`](service::ServiceContext) is in
+//! charge of defining the polling strategy for the service.
 //!
-//! See [`Service`](service::Service) and [`Context`](service::Context) documentation for more
-//! details.
+//! See [`Service`](service::Service) and [`ServiceContext`](service::ServiceContext) documentation
+//! for more details.
 
-pub use context::Context;
+pub use context::{BufferedContext, ServiceContext};
 pub use context_handles::{OnEventCtx, PollCtx};
 pub use service_trait::{InEvent, OutEvent, Service};
 
