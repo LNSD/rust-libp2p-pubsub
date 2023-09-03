@@ -11,39 +11,6 @@ pub enum SubscriptionAction {
 }
 
 impl SubscriptionAction {
-    pub fn subscribe(topic_id: impl Into<TopicHash>) -> Self {
-        SubscriptionAction::Subscribe(topic_id.into())
-    }
-
-    pub fn unsubscribe(topic_id: impl Into<TopicHash>) -> Self {
-        SubscriptionAction::Unsubscribe(topic_id.into())
-    }
-}
-
-impl SubscriptionAction {
-    /// Returns `true` if the [`SubscriptionAction`] is a [`SubscriptionAction::Subscribe`] action.
-    #[must_use]
-    pub fn is_subscribe(&self) -> bool {
-        match self {
-            SubscriptionAction::Subscribe(_) => true,
-            SubscriptionAction::Unsubscribe(_) => false,
-        }
-    }
-
-    /// Returns `true` if the [`SubscriptionAction`] is a [`SubscriptionAction::Unsubscribe`] action.
-    pub fn is_unsubscribe(&self) -> bool {
-        !self.is_subscribe()
-    }
-
-    /// Returns the topic of the [`SubscriptionAction`] action.
-    #[must_use]
-    pub fn topic_id(&self) -> &TopicHash {
-        match self {
-            SubscriptionAction::Subscribe(topic_id) => topic_id,
-            SubscriptionAction::Unsubscribe(topic_id) => topic_id,
-        }
-    }
-
     /// Convert the [`SubscriptionAction`] into a [`(TopicHash, bool)`] pair.
     #[must_use]
     pub fn into_pair(self) -> (TopicHash, bool) {

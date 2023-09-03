@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use assert_matches::assert_matches;
+use bytes::{Bytes, BytesMut};
 use libp2p::identity::PeerId;
+use prost::Message;
 use rand::random;
 
 use common_test as testlib;
@@ -30,6 +32,20 @@ fn new_test_message(topic: TopicHash) -> FrameMessage {
     FrameMessage::new(topic, payload.into_bytes())
 }
 
+/// Convenience function to encode a frame into a byte buffer.
+fn encode_frame(frame: impl Into<FrameProto>) -> Bytes {
+    let frame = frame.into();
+
+    let mut bytes = BytesMut::with_capacity(frame.encoded_len());
+    frame.encode(&mut bytes).unwrap();
+    bytes.freeze()
+}
+
+/// Convenience function to decode a pubsub frame from a byte buffer.
+fn decode_frame(frame: &Bytes) -> FrameProto {
+    FrameProto::decode(frame.as_ref()).expect("Failed to decode frame")
+}
+
 mod upstream {
     use super::*;
 
@@ -40,7 +56,7 @@ mod upstream {
     ) -> impl IntoIterator<Item = UpstreamInEvent> {
         [UpstreamInEvent::RawFrameReceived {
             src,
-            frame: frame.into(),
+            frame: encode_frame(frame),
         }]
     }
 
@@ -48,7 +64,7 @@ mod upstream {
     fn process_invalid_empty_frame() {
         //// Given
         let remote_peer = new_test_peer_id();
-        let empty_frame = Frame::new([], []);
+        let empty_frame = Frame::empty();
 
         let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
@@ -224,9 +240,9 @@ mod downstream {
             // Assert the destination peer is the expected one.
             assert_eq!(dest, &remote_peer);
             // Assert the frame content
-            assert!(frame.subscriptions.is_empty(), "No subscriptions should be encoded");
-            assert!(frame.control.is_none(), "No control messages should be encoded");
+            assert!(!frame.is_empty(), "The encoded frame buffers should not be empty");
 
+            let frame = decode_frame(frame);
             assert_eq!(frame.publish.len(), 1, "Only 1 message should be encoded");
             assert_eq!(
                 &frame.publish[0].topic, topic.as_str(),
@@ -260,6 +276,12 @@ mod downstream {
             // Assert the destination peer is the expected one.
             assert_eq!(dest, &remote_peer);
             // Assert the frame content
+            assert!(
+                !frame.is_empty(),
+                "The encoded frame buffers should not be empty"
+            );
+
+            let frame = decode_frame(frame);
             assert!(frame.publish.is_empty(), "No messages should be encoded");
             assert!(frame.control.is_none(), "No control messages should be encoded");
 

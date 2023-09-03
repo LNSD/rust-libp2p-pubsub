@@ -1889,6 +1889,7 @@ dependencies = [
  "tracing",
  "tracing-futures",
  "trait-set",
+    "unsigned-varint",
 ]
 
 [[package]]
