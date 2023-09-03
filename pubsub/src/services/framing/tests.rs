@@ -7,11 +7,12 @@ use rand::random;
 use common_test as testlib;
 use common_test::service::noop_context;
 
-use crate::framing::Message as FrameMessage;
+use crate::framing::{Frame, FrameProto, Message as FrameMessage, SubscriptionAction};
 use crate::topic::TopicHash;
 
-use super::events::{DownstreamInEvent, DownstreamOutEvent};
+use super::events::{DownstreamInEvent, DownstreamOutEvent, UpstreamInEvent, UpstreamOutEvent};
 use super::service_downstream::DownstreamFramingService;
+use super::service_upstream::UpstreamFramingService;
 
 /// Convenience function to create a new `PeerId` for testing.
 fn new_test_peer_id() -> PeerId {
@@ -30,12 +31,150 @@ fn new_test_message(topic: TopicHash) -> FrameMessage {
 }
 
 mod upstream {
-    // TODO: Implement the upstream framing service tests.
+    use super::*;
+
+    /// Convenience function to create a new `UpstreamInEvent::RawFrameReceived` event sequence.
+    fn new_raw_frame_received_seq(
+        src: PeerId,
+        frame: impl Into<FrameProto>,
+    ) -> impl IntoIterator<Item = UpstreamInEvent> {
+        [UpstreamInEvent::RawFrameReceived {
+            src,
+            frame: frame.into(),
+        }]
+    }
+
+    #[test]
+    fn process_invalid_empty_frame() {
+        //// Given
+        let remote_peer = new_test_peer_id();
+        let empty_frame = Frame::new([], []);
+
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
+
+        //// When
+        let input_events = new_raw_frame_received_seq(remote_peer, empty_frame);
+        testlib::service::inject_events(&mut service, input_events);
+
+        let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+        //// Then
+        assert_eq!(output_events.len(), 0, "No events should be emitted");
+    }
+
+    #[test]
+    fn process_frame_with_invalid_message_empty_topic() {
+        //// Given
+        let remote_peer = new_test_peer_id();
+
+        let empty_topic = TopicHash::from_raw("");
+        let invalid_message = new_test_message(empty_topic);
+        let frame = Frame::new_with_messages([invalid_message]);
+
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
+
+        //// When
+        let input_events = new_raw_frame_received_seq(remote_peer, frame);
+        testlib::service::inject_events(&mut service, input_events);
+
+        let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+        //// Then
+        assert_eq!(output_events.len(), 0, "No events should be emitted");
+    }
+
+    #[test]
+    fn process_frame_with_invalid_subscription_request_empty_topic() {
+        //// Given
+        let remote_peer = new_test_peer_id();
+
+        let empty_topic = TopicHash::from_raw("");
+        let invalid_subscription_request = SubscriptionAction::Subscribe(empty_topic);
+        let frame = Frame::new_with_subscriptions([invalid_subscription_request]);
+
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
+
+        //// When
+        let input_events = new_raw_frame_received_seq(remote_peer, frame);
+        testlib::service::inject_events(&mut service, input_events);
+
+        let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+        //// Then
+        assert_eq!(output_events.len(), 0, "No events should be emitted");
+    }
+
+    #[test]
+    fn process_frame_with_multiple_messages() {
+        //// Given
+        let remote_peer = new_test_peer_id();
+
+        let topic_a = new_test_topic();
+        let topic_b = new_test_topic();
+
+        let message_a = new_test_message(topic_a.clone());
+        let message_b = new_test_message(topic_b.clone());
+
+        let frame = Frame::new_with_messages([message_a.clone(), message_b.clone()]);
+
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
+
+        //// When
+        let input_events = new_raw_frame_received_seq(remote_peer, frame);
+        testlib::service::inject_events(&mut service, input_events);
+
+        let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+        //// Then
+        assert_eq!(output_events.len(), 2, "Only 2 events should be emitted");
+        assert_matches!(&output_events[0], UpstreamOutEvent::MessageReceived { src, message } => {
+            assert_eq!(src, &remote_peer);
+            assert_eq!(message.as_ref(), &message_a);
+        });
+        assert_matches!(&output_events[1], UpstreamOutEvent::MessageReceived { src, message } => {
+            assert_eq!(src, &remote_peer);
+            assert_eq!(message.as_ref(), &message_b);
+        });
+    }
+
+    #[test]
+    fn process_frame_with_subscription_requests() {
+        //// Given
+        let remote_peer = new_test_peer_id();
+
+        let topic_a = new_test_topic();
+        let topic_b = new_test_topic();
+
+        let subscription_request_a = SubscriptionAction::Subscribe(topic_a.clone());
+        let subscription_request_b = SubscriptionAction::Unsubscribe(topic_b.clone());
+
+        let frame = Frame::new_with_subscriptions([
+            subscription_request_a.clone(),
+            subscription_request_b.clone(),
+        ]);
+
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
+
+        //// When
+        let input_events = new_raw_frame_received_seq(remote_peer, frame);
+        testlib::service::inject_events(&mut service, input_events);
+
+        let output_events = testlib::service::collect_events(&mut service, &mut noop_context());
+
+        //// Then
+        assert_eq!(output_events.len(), 2, "Only 2 events should be emitted");
+        assert_matches!(&output_events[0], UpstreamOutEvent::SubscriptionRequestReceived { src, action } => {
+            assert_eq!(src, &remote_peer);
+            assert_eq!(action, &subscription_request_a);
+        });
+        assert_matches!(&output_events[1], UpstreamOutEvent::SubscriptionRequestReceived { src, action } => {
+            assert_eq!(src, &remote_peer);
+            assert_eq!(action, &subscription_request_b);
+        });
+    }
 }
 
 mod downstream {
-    use crate::framing::SubscriptionAction;
-
     use super::*;
 
     /// Convenience function to create a new `DownstreamInEvent::ForwardMessage` event sequence.
