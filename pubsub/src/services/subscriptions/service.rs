@@ -36,11 +36,12 @@ impl SubscriptionsService {
 
     /// Returns whether the given peer is subscribed to the given topic or not.
     ///
-    /// If the peer is not connected, this returns `None`.
-    pub fn is_peer_subscribed(&self, peer: &PeerId, topic: &TopicHash) -> Option<bool> {
+    /// If the peer is not subscribed to the topic, or not connected, this returns `false`.
+    pub fn is_peer_subscribed(&self, peer: &PeerId, topic: &TopicHash) -> bool {
         self.peers_subscriptions
             .get(peer)
             .map(|topics| topics.contains(topic))
+            .unwrap_or(false)
     }
 
     /// Returns the topics the given peer is subscribed to.
