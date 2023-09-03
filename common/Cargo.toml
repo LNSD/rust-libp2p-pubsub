@@ -3,22 +3,13 @@ name = "common"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-prost_codec = ["dep:prost", "dep:asynchronous-codec", "unsigned-varint/asynchronous_codec"]
-quick_protobuf_codec = ["dep:quick-protobuf", "dep:asynchronous-codec", "unsigned-varint/asynchronous_codec"]
-
 [dependencies]
-asynchronous-codec = { version = "0.6.2", optional = true }
-bytes.workspace = true
 futures.workspace = true
 futures-ticker = "0.0.3"
 hashlink = "0.8.4"
 instant = "0.1.12"
 libp2p.workspace = true
-prost = { workspace = true, optional = true }
-quick-protobuf = { version = "0.8", optional = true }
 thiserror.workspace = true
-unsigned-varint = { version = "0.7.1", features = ["asynchronous-codec"], optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
