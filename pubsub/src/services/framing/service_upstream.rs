@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
+use bytes::Bytes;
 use libp2p::identity::PeerId;
+use prost::Message;
 
 use common::service::{OnEventCtx, Service};
 
@@ -15,6 +17,11 @@ use super::events::{UpstreamInEvent, UpstreamOutEvent};
 /// received frames and emitting the  received messages and subscription request events.
 #[derive(Default)]
 pub struct UpstreamFramingService;
+
+/// Decode a pubsub frame from a byte buffer.
+fn decode_frame(frame: Bytes) -> anyhow::Result<RawFrame> {
+    RawFrame::decode(frame).map_err(anyhow::Error::from)
+}
 
 /// Validate, sanitize and process a raw frame received from the `src` peer.
 fn process_raw_frame(
@@ -84,6 +91,15 @@ impl Service for UpstreamFramingService {
     fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
         match ev {
             UpstreamInEvent::RawFrameReceived { src, frame } => {
+                // Decode the received frame.
+                let frame = match decode_frame(frame) {
+                    Ok(frame) => frame,
+                    Err(err) => {
+                        tracing::trace!(%src, "Invalid frame received: {}", err);
+                        return;
+                    }
+                };
+
                 // Process the received frames.
                 match process_raw_frame(src, frame) {
                     Ok((messages, subscriptions)) => {

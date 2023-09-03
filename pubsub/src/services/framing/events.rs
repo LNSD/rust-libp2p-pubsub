@@ -1,15 +1,16 @@
 use std::rc::Rc;
 
+use bytes::Bytes;
 use libp2p::identity::PeerId;
 
-use crate::framing::{FrameProto, Message as FrameMessage, SubscriptionAction};
+use crate::framing::{Message as FrameMessage, SubscriptionAction};
 
 /// The input event for the framing service.
 #[derive(Debug, Clone)]
 pub enum ServiceIn {
     /// An event originated from the connection handler to the network behaviour.
     Upstream(UpstreamInEvent),
-    /// An event originated inthe network behaviour to the connection handler.
+    /// An event originated in the network behaviour to the connection handler.
     Downstream(DownstreamInEvent),
 }
 
@@ -31,7 +32,7 @@ pub enum UpstreamInEvent {
         /// The peer that propagated the frame.
         src: PeerId,
         /// The raw frame.
-        frame: FrameProto, //TODO: Replace with bytes after the conn_handler refactoring
+        frame: Bytes,
     },
 }
 
@@ -80,6 +81,6 @@ pub enum DownstreamOutEvent {
         /// The destination peer.
         dest: PeerId,
         /// The raw frame to propagate.
-        frame: FrameProto, // TODO: Replace with bytes after the conn_handler refactoring
+        frame: Bytes,
     },
 }

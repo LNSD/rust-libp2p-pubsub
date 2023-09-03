@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use bytes::Bytes;
 use libp2p::core::Endpoint;
 use libp2p::identity::PeerId;
 use libp2p::swarm::behaviour::ConnectionEstablished;
@@ -12,14 +13,13 @@ use libp2p::swarm::{
     THandler, THandlerInEvent, THandlerOutEvent, ToSwarm,
 };
 use libp2p::Multiaddr;
-use prost::Message as _;
 
 use common::service::{BufferedContext, ServiceContext};
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
 use crate::event::Event;
-use crate::framing::{FrameProto, Message as FrameMessage, SubscriptionAction};
+use crate::framing::{Message as FrameMessage, SubscriptionAction};
 use crate::message::Message;
 use crate::protocol::{
     Protocol, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
@@ -195,11 +195,11 @@ impl<P: Protocol> Behaviour<P> {
     ///
     /// This method checks if the frame size is within the allowed limits and queues a connection
     /// handler event to send the frame to the peer.
-    fn send_frame(&mut self, dest: PeerId, frame: FrameProto) {
+    fn send_frame(&mut self, dest: PeerId, frame: Bytes) {
         tracing::trace!(%dest, "Sending frame");
 
         // Check if the frame size exceeds the maximum allowed size. If so, drop the frame.
-        if frame.encoded_len() > self.config.max_frame_size() {
+        if frame.len() > self.config.max_frame_size() {
             tracing::warn!(%dest, "Frame size exceeds maximum allowed size");
             return;
         }

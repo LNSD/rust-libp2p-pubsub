@@ -13,15 +13,12 @@ pub struct Frame {
 }
 
 impl Frame {
-    /// Creates a new [`Frame`] with the given subscriptions and messages.
-    #[must_use]
-    pub fn new(
-        subscriptions: impl IntoIterator<Item = SubscriptionAction>,
-        messages: impl IntoIterator<Item = Message>,
-    ) -> Self {
+    /// Creates a new empty [`Frame`].
+    #[cfg(test)]
+    pub fn empty() -> Self {
         Self {
-            subscriptions: subscriptions.into_iter().collect(),
-            messages: messages.into_iter().collect(),
+            subscriptions: Vec::new(),
+            messages: Vec::new(),
         }
     }
 
@@ -43,18 +40,6 @@ impl Frame {
             messages: messages.into_iter().collect(),
             ..Default::default()
         }
-    }
-
-    /// Returns the subscriptions to add or remove.
-    #[must_use]
-    pub fn subscriptions(&self) -> &[SubscriptionAction] {
-        &self.subscriptions
-    }
-
-    /// Returns the messages to send.
-    #[must_use]
-    pub fn messages(&self) -> &[Message] {
-        &self.messages
     }
 }
 
