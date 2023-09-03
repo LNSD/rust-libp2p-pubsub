@@ -18,17 +18,6 @@ pub type OutEvent<T> = <T as Service>::OutEvent;
 /// polling-driven.
 ///
 /// See [`on_event`](#method.on_event) and [`poll`](#method.poll) methods for more details.
-///
-/// The service is polled by the [`Context`](super::Context) struct follows this strategy:
-///  1. Process all the service input mailbox events. This triggers the [`Service::on_event`] method
-///     for each event, allowing the service state to be updated.
-///  2. Poll the service for events. This triggers the [`Service::poll`] method, allowing the
-///     service to emit events.
-///
-///     If the `poll` method returns a `Poll::Ready` event, the polling process will stop any
-///     further polling and the event will be returned to the downstream service.
-///  3. Process all the service output mailbox events. This drains the output mailbox and returns
-///     the events to the downstream service.
 pub trait Service: 'static {
     type InEvent: 'static;
     type OutEvent: 'static;
