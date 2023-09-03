@@ -19,10 +19,7 @@ use common::service::{BufferedContext, ServiceContext};
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
 use crate::event::Event;
-use crate::framing::{
-    validate_frame_proto, validate_message_proto, validate_subopts_proto, Frame, FrameProto,
-    Message as FrameMessage, SubscriptionAction,
-};
+use crate::framing::{FrameProto, Message as FrameMessage, SubscriptionAction};
 use crate::message::Message;
 use crate::protocol::{
     Protocol, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
@@ -30,6 +27,10 @@ use crate::protocol::{
 };
 use crate::services::connections::{
     ConnectionsInEvent, ConnectionsOutEvent, ConnectionsService, ConnectionsSwarmEvent,
+};
+use crate::services::framing::{
+    FramingDownstreamInEvent, FramingDownstreamOutEvent, FramingInEvent, FramingOutEvent,
+    FramingServiceContext, FramingUpstreamInEvent, FramingUpstreamOutEvent,
 };
 use crate::services::message_cache::{
     MessageCacheInEvent, MessageCacheService, MessageCacheSubscriptionEvent,
@@ -56,6 +57,9 @@ pub struct Behaviour<P: Protocol> {
 
     /// The pubsub protocol router service.
     protocol_router_service: BufferedContext<P::RouterService>,
+
+    /// The frame encoder and decoder service.
+    framing_service: FramingServiceContext,
 
     /// Connection handler's mailbox.
     ///
@@ -87,6 +91,7 @@ impl<P: Protocol> Behaviour<P> {
             subscriptions_service: Default::default(),
             message_cache_service,
             protocol_router_service,
+            framing_service: Default::default(),
             conn_handler_mailbox: Default::default(),
             behaviour_output_mailbox: Default::default(),
         }
@@ -186,119 +191,23 @@ impl<P: Protocol> Behaviour<P> {
 
 /// Internal API.
 impl<P: Protocol> Behaviour<P> {
-    /// Handle a pubsub frame received from a `src` peer.
-    fn on_frame_received(&mut self, src: PeerId, frame: FrameProto) {
-        // 1. Validate the RPC frame.
-        if let Err(err) = validate_frame_proto(&frame) {
-            tracing::trace!(%src, "Received invalid frame: {}", err);
-            return;
-        }
-
-        tracing::trace!(%src, "Frame received");
-
-        // 2. Validate, sanitize and process the frame messages'.
-        if !frame.publish.is_empty() {
-            let messages = frame
-                .publish
-                .into_iter()
-                .filter_map(|msg| {
-                    if let Err(err) = validate_message_proto(&msg) {
-                        tracing::trace!(%src, "Received invalid message: {}", err);
-                        return None;
-                    }
-
-                    Some(FrameMessage::from(msg))
-                })
-                // Filter out messages from topics that we are not subscribed to.
-                .filter(|msg| self.subscriptions_service.is_subscribed(&msg.topic()))
-                // Filter out messages that we have already received.
-                .filter(|msg| !self.message_cache_service.contains(msg))
-                .map(Rc::new)
-                .collect::<Vec<_>>();
-
-            tracing::trace!(%src, messages=messages.len(), "Received messages");
-
-            for message in messages {
-                // Add the message to the message cache.
-                self.message_cache_service
-                    .do_send(MessageCacheInEvent::MessageReceived(message.clone()));
-
-                // Emit a message received event to the protocol's routing service.
-                self.protocol_router_service
-                    .do_send(ProtocolRouterInEvent::MessageReceived {
-                        src,
-                        message: message.clone(),
-                    });
-
-                // Emit a message received event to the behaviour output mailbox.
-                self.behaviour_output_mailbox
-                    .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
-                        src,
-                        message: Message::from((*message).clone()), // Clone the underlying message.
-                    }));
-            }
-        }
-
-        // 3. Validate, sanitize and process the frame subscription actions.
-        if !frame.subscriptions.is_empty() {
-            let sub_actions = frame.subscriptions.into_iter().filter_map(|sub| {
-                if let Err(err) = validate_subopts_proto(&sub) {
-                    tracing::trace!(%src, "Received invalid subscription action: {}", err);
-                    return None;
-                }
-
-                let sub = SubscriptionAction::from(sub);
-
-                // Filter out duplicated subscription actions.
-                match &sub {
-                    SubscriptionAction::Subscribe(topic) => {
-                        if self.subscriptions_service.is_peer_subscribed(&src, topic).unwrap_or(false) {
-                            tracing::trace!(%src, topic = %topic, "Received duplicated subscription action");
-                            return None;
-                        }
-                    }
-                    SubscriptionAction::Unsubscribe(topic) => {
-                        if !self.subscriptions_service.is_peer_subscribed(&src, topic).unwrap_or(false) {
-                            tracing::trace!(%src, topic = %topic, "Received unsubscription action for non-subscribed topic");
-                            return None;
-                        }
-                    }
-                }
-
-                Some(sub)
-            })
-                .collect::<Vec<_>>();
-
-            for action in sub_actions {
-                self.subscriptions_service
-                    .do_send(SubscriptionsInEvent::PeerSubscriptionRequest { src, action });
-            }
-        }
-
-        // 4. Validate, sanitize and process the frame control messages.
-        // TODO: Implement the frame control messages processing.
-    }
-
     /// Send a pubsub frame to a `dst` peer.
     ///
     /// This method checks if the frame size is within the allowed limits and queues a connection
     /// handler event to send the frame to the peer.
-    fn send_frame(&mut self, dst: PeerId, frame: impl Into<FrameProto>) {
-        tracing::trace!(dst = %dst, "Sending frame");
-
-        let frame_proto = frame.into();
+    fn send_frame(&mut self, dest: PeerId, frame: FrameProto) {
+        tracing::trace!(%dest, "Sending frame");
 
         // Check if the frame size exceeds the maximum allowed size. If so, drop the frame.
-        // TODO: Implement frame fragmentation.
-        if frame_proto.encoded_len() > self.config.max_frame_size() {
-            tracing::warn!(dst = %dst, "Frame size exceeds maximum allowed size");
+        if frame.encoded_len() > self.config.max_frame_size() {
+            tracing::warn!(%dest, "Frame size exceeds maximum allowed size");
             return;
         }
 
         self.conn_handler_mailbox.push_back(ToSwarm::NotifyHandler {
-            peer_id: dst,
+            peer_id: dest,
             handler: NotifyHandler::Any,
-            event: HandlerCommand::SendFrame(frame_proto),
+            event: HandlerCommand::SendFrame(frame),
         });
     }
 }
@@ -385,7 +294,15 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
         event: THandlerOutEvent<Self>,
     ) {
         match event {
-            HandlerEvent::FrameReceived(ev) => self.on_frame_received(peer_id, ev),
+            HandlerEvent::FrameReceived(frame) => {
+                // Notify the framing service of the received frame handler event.
+                self.framing_service.do_send(FramingInEvent::Upstream(
+                    FramingUpstreamInEvent::RawFrameReceived {
+                        src: peer_id,
+                        frame,
+                    },
+                ));
+            }
         }
     }
 
@@ -439,10 +356,15 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
                     // Send the subscription update to all active peers.
                     tracing::debug!(topic = %sub.topic, "Sending subscription update");
 
-                    let frame =
-                        Frame::new_with_subscriptions([SubscriptionAction::Subscribe(sub.topic)]);
-                    for dst_peer in self.connections_service.active_peers() {
-                        self.send_frame(dst_peer, frame.clone());
+                    let sub_action = SubscriptionAction::Subscribe(sub.topic);
+                    for dest in self.connections_service.active_peers() {
+                        // Notify the framing service of the subscription update request.
+                        self.framing_service.do_send(FramingInEvent::Downstream(
+                            FramingDownstreamInEvent::SendSubscriptionRequest {
+                                dest,
+                                actions: vec![sub_action.clone()],
+                            },
+                        ));
                     }
                 }
                 SubscriptionsOutEvent::Unsubscribed(topic) => {
@@ -461,10 +383,15 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
                     // Send the subscription updates to all active peers.
                     tracing::debug!(%topic, "Sending subscription update");
 
-                    let frame =
-                        Frame::new_with_subscriptions([SubscriptionAction::Unsubscribe(topic)]);
-                    for dst_peer in self.connections_service.active_peers() {
-                        self.send_frame(dst_peer, frame.clone());
+                    let sub_action = SubscriptionAction::Unsubscribe(topic);
+                    for dest in self.connections_service.active_peers() {
+                        // Notify the framing service of the subscription update request.
+                        self.framing_service.do_send(FramingInEvent::Downstream(
+                            FramingDownstreamInEvent::SendSubscriptionRequest {
+                                dest,
+                                actions: vec![sub_action.clone()],
+                            },
+                        ));
                     }
                 }
                 SubscriptionsOutEvent::PeerSubscribed { peer, topic } => {
@@ -485,14 +412,17 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
                             ProtocolRouterSubscriptionEvent::PeerUnsubscribed { peer, topic },
                         ));
                 }
-                SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
+                SubscriptionsOutEvent::SendSubscriptions { dest, topics } => {
                     // Send the subscriptions to the peer.
-                    tracing::debug!(dst = %peer, ?topics, "Sending subscriptions");
+                    tracing::debug!(%dest, ?topics, "Sending subscriptions");
 
-                    let frame = Frame::new_with_subscriptions(
-                        topics.into_iter().map(SubscriptionAction::Subscribe),
-                    );
-                    self.send_frame(peer, frame);
+                    let actions = topics
+                        .into_iter()
+                        .map(SubscriptionAction::Subscribe)
+                        .collect::<Vec<_>>();
+                    self.framing_service.do_send(FramingInEvent::Downstream(
+                        FramingDownstreamInEvent::SendSubscriptionRequest { dest, actions },
+                    ));
                 }
             }
         }
@@ -504,16 +434,76 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
         while let Poll::Ready(event) = self.protocol_router_service.poll(cx) {
             match event {
                 ProtocolRouterOutEvent::ForwardMessage { message, dest } => {
-                    for dst_peer in dest {
-                        let message = message.clone();
-
-                        let frame = Frame::new_with_messages([
-                            // TODO: Avoid cloning the message here.
-                            (*message).clone(), // Clone the underlying message.
-                        ]);
-                        self.send_frame(dst_peer, frame);
+                    for dest in dest {
+                        // Notify the framing service of the message to send.
+                        self.framing_service.do_send(FramingInEvent::Downstream(
+                            FramingDownstreamInEvent::ForwardMessage {
+                                dest,
+                                message: message.clone(),
+                            },
+                        ));
                     }
                 }
+            }
+        }
+
+        // Poll the framing service.
+        while let Poll::Ready(event) = self.framing_service.poll(cx) {
+            match event {
+                FramingOutEvent::Downstream(FramingDownstreamOutEvent::SendFrame {
+                    dest,
+                    frame,
+                }) => {
+                    // Send the frame to the peer.
+                    self.send_frame(dest, frame);
+                }
+                FramingOutEvent::Upstream(ev) => match ev {
+                    FramingUpstreamOutEvent::MessageReceived { src, message } => {
+                        // Skip the message if we are not subscribed to the topic or the message
+                        // was already received.
+                        if !self.subscriptions_service.is_subscribed(&message.topic())
+                            || self.message_cache_service.contains(&message)
+                        {
+                            continue;
+                        }
+
+                        // Notify the message cache service of the received message.
+                        self.message_cache_service
+                            .do_send(MessageCacheInEvent::MessageReceived(message.clone()));
+
+                        // Notify the behaviour output mailbox of the received message.
+                        self.behaviour_output_mailbox
+                            .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
+                                src,
+                                message: (*message).clone().into(),
+                            }));
+
+                        // Notify the protocol's routing service of the received message.
+                        self.protocol_router_service
+                            .do_send(ProtocolRouterInEvent::MessageReceived { src, message });
+                    }
+                    FramingUpstreamOutEvent::SubscriptionRequestReceived { src, action } => {
+                        match &action {
+                            SubscriptionAction::Subscribe(topic)
+                                if !self.subscriptions_service.is_peer_subscribed(&src, topic) =>
+                            {
+                                // Notify the subscriptions service of the subscription request.
+                                self.subscriptions_service.do_send(
+                                    SubscriptionsInEvent::PeerSubscriptionRequest { src, action },
+                                );
+                            }
+                            SubscriptionAction::Unsubscribe(topic)
+                                if self.subscriptions_service.is_peer_subscribed(&src, topic) =>
+                            {
+                                // Notify the subscriptions service of the unsubscription request.
+                                self.subscriptions_service.do_send(
+                                    SubscriptionsInEvent::PeerSubscriptionRequest { src, action },
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                },
             }
         }
 

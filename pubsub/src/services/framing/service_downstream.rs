@@ -25,10 +25,7 @@ impl Service for DownstreamFramingService {
                 .into();
                 svc_cx.emit(DownstreamOutEvent::SendFrame { dest, frame });
             }
-            DownstreamInEvent::SendSubscriptionRequest {
-                dest,
-                action: actions,
-            } => {
+            DownstreamInEvent::SendSubscriptionRequest { dest, actions } => {
                 // Create a new frame with the subscription actions, encode it and send it to the
                 // destination peer. The resulting frame will contain only subscription actions.
                 let frame = Frame::new_with_subscriptions(actions).into();

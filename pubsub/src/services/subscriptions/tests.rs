@@ -246,14 +246,14 @@ fn emit_send_subscriptions_on_new_peer_connected() {
         2,
         "Only 2 events should be emitted (1 per peer)"
     );
-    assert_matches!(&output_events[0], SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
-        assert_eq!(peer, &peer_a);
+    assert_matches!(&output_events[0], SubscriptionsOutEvent::SendSubscriptions { dest, topics } => {
+        assert_eq!(dest, &peer_a);
         assert_eq!(topics.len(), 2);
         assert!(topics.contains(&topic_a.hash()));
         assert!(topics.contains(&topic_b.hash()));
     });
-    assert_matches!(&output_events[1], SubscriptionsOutEvent::SendSubscriptions { peer, topics } => {
-        assert_eq!(peer, &peer_b);
+    assert_matches!(&output_events[1], SubscriptionsOutEvent::SendSubscriptions { dest, topics } => {
+        assert_eq!(dest, &peer_b);
         assert_eq!(topics.len(), 2);
         assert!(topics.contains(&topic_a.hash()));
         assert!(topics.contains(&topic_b.hash()));
@@ -306,15 +306,11 @@ fn register_peer_subscription_to_topic_when_not_registered() {
     //// Then
     // Assert the state
     assert!(
-        service
-            .is_peer_subscribed(&remote_peer, &topic_a.hash())
-            .unwrap(),
+        service.is_peer_subscribed(&remote_peer, &topic_a.hash()),
         "Peer should be subscribed to Topic A"
     );
     assert!(
-        service
-            .is_peer_subscribed(&remote_peer, &topic_b.hash())
-            .unwrap(),
+        service.is_peer_subscribed(&remote_peer, &topic_b.hash()),
         "Peer should be subscribed to Topic B"
     );
 
@@ -423,15 +419,11 @@ fn unregister_peer_subscription_to_topic_when_registered() {
     //// Then
     // Assert the state
     assert!(
-        !service
-            .is_peer_subscribed(&remote_peer, &topic_a.hash())
-            .unwrap(),
+        !service.is_peer_subscribed(&remote_peer, &topic_a.hash()),
         "Peer should not be subscribed to Topic A"
     );
     assert!(
-        !service
-            .is_peer_subscribed(&remote_peer, &topic_b.hash())
-            .unwrap(),
+        !service.is_peer_subscribed(&remote_peer, &topic_b.hash()),
         "Peer should not be subscribed to Topic B"
     );
 
@@ -476,15 +468,11 @@ fn remove_all_peer_subscriptions_on_peer_disconnected() {
 
     //// Then
     assert!(
-        service
-            .is_peer_subscribed(&remote_peer, &topic_a.hash())
-            .is_none(),
+        !service.is_peer_subscribed(&remote_peer, &topic_a.hash()),
         "Peer should not be subscribed to Topic A"
     );
     assert!(
-        service
-            .is_peer_subscribed(&remote_peer, &topic_b.hash())
-            .is_none(),
+        !service.is_peer_subscribed(&remote_peer, &topic_b.hash()),
         "Peer should not be subscribed to Topic B"
     );
 

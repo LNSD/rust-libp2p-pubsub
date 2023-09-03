@@ -54,6 +54,8 @@ fn process_raw_frame_messages(
             return None;
         }
 
+        tracing::trace!(%src, "Message received");
+
         Some(FrameMessage::from(msg))
     })
 }
@@ -68,6 +70,8 @@ fn process_raw_frame_subscription_requests(
             tracing::trace!(%src, "Received invalid subscription action: {}", err);
             return None;
         }
+
+        tracing::trace!(%src, "Subscription action received");
 
         Some(SubscriptionAction::from(sub))
     })
@@ -100,7 +104,7 @@ impl Service for UpstreamFramingService {
                         svc_cx.emit_batch(subscriptions);
                     }
                     Err(err) => {
-                        tracing::trace!(%src, "Received an invalid frame: {}", err);
+                        tracing::trace!(%src, "Invalid frame received: {}", err);
                     }
                 }
             }

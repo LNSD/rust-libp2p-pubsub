@@ -196,7 +196,7 @@ mod downstream {
     ) -> impl IntoIterator<Item = DownstreamInEvent> {
         [DownstreamInEvent::SendSubscriptionRequest {
             dest,
-            action: topics
+            actions: topics
                 .into_iter()
                 .map(SubscriptionAction::Subscribe)
                 .collect(),

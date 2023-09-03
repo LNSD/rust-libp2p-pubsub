@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: Remove after the service integration
-
 use std::rc::Rc;
 
 use libp2p::identity::PeerId;
@@ -71,7 +69,7 @@ pub enum DownstreamInEvent {
         /// The destination peer.
         dest: PeerId,
         /// The subscription actions to send.
-        action: Vec<SubscriptionAction>,
+        actions: Vec<SubscriptionAction>,
     },
 }
 

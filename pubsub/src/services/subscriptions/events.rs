@@ -81,7 +81,7 @@ pub enum ServiceOut {
     /// [`SubscriptionAction::Subscribe`] action per topic that the local node is subscribed to.
     SendSubscriptions {
         /// Peer to send the subscriptions to.
-        peer: PeerId,
+        dest: PeerId,
 
         /// Topics list to send.
         topics: Vec<TopicHash>,
