@@ -8,8 +8,11 @@ use crate::framing::{
     validate_frame_proto, validate_message_proto, validate_subopts_proto, FrameProto as RawFrame,
     Message as FrameMessage, MessageProto, SubOptsProto, SubscriptionAction,
 };
-use crate::services::framing::{UpstreamInEvent, UpstreamOutEvent};
 
+use super::events::{UpstreamInEvent, UpstreamOutEvent};
+
+/// The upstream framing service is responsible for decoding, validating and processing the
+/// received frames and emitting the  received messages and subscription request events.
 #[derive(Default)]
 pub struct UpstreamFramingService;
 

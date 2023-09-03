@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: Remove after the service integration
+
 use std::rc::Rc;
 
 use libp2p::identity::PeerId;

@@ -4,6 +4,8 @@ use crate::framing::Frame;
 
 use super::events::{DownstreamInEvent, DownstreamOutEvent};
 
+/// The downstream framing service is responsible for encoding the messages and subscription
+/// requests into frames and sending them to the destination peer.
 #[derive(Default)]
 pub struct DownstreamFramingService;
 
