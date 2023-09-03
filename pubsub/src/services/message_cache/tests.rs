@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::time::Duration;
 
-use rand::Rng;
+use rand::random;
 use sha2::{Digest, Sha256};
 
 use common::service::BufferedContext;
@@ -39,15 +39,12 @@ fn new_test_service_with_ttl_and_heartbeat(
 
 /// Create a new random test topic.
 fn new_test_topic() -> TopicHash {
-    TopicHash::from_raw(format!(
-        "/pubsub/2/it-pubsub-test-{}",
-        rand::thread_rng().gen::<u32>()
-    ))
+    TopicHash::from_raw(format!("/pubsub/2/it-pubsub-test-{}", random::<u32>()))
 }
 
 /// Create a test `Message` with given topic and random payload.
 fn new_test_message(topic: TopicHash) -> Message {
-    let payload = format!("test-payload-{}", rand::thread_rng().gen::<u32>());
+    let payload = format!("test-payload-{}", random::<u32>());
     Message::new(topic, payload.into_bytes())
 }
 
