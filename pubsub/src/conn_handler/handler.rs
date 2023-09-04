@@ -92,8 +92,7 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(protocol_id: ProtocolId, max_frame_size: usize, idle_timeout: Duration) -> Self {
-        let upgrade = Upgrade::new(protocol_id);
+    pub fn new(upgrade: Upgrade, max_frame_size: usize, idle_timeout: Duration) -> Self {
         Self {
             upgrade,
             max_frame_size,

@@ -15,6 +15,7 @@ use libp2p::swarm::{
 use libp2p::Multiaddr;
 
 use common::service::{BufferedContext, ServiceContext};
+use common::upgrade::SimpleUpgrade as Upgrade;
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
@@ -233,7 +234,7 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
             });
 
         Ok(Handler::new(
-            P::protocol_id(),
+            Upgrade::new(P::protocol_id()),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
@@ -255,7 +256,7 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
             });
 
         Ok(Handler::new(
-            P::protocol_id(),
+            Upgrade::new(P::protocol_id()),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
