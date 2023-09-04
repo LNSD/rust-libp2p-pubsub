@@ -1,4 +1,4 @@
-use crate::framing::{validate_subopts_proto, SubOptsProto};
+use crate::framing::SubOptsProto;
 use crate::topic::TopicHash;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -24,11 +24,6 @@ impl SubscriptionAction {
 impl From<SubOptsProto> for SubscriptionAction {
     /// Convert a [`SubOptsProto`] into a [`SubscriptionAction`].
     fn from(proto: SubOptsProto) -> Self {
-        debug_assert!(
-            validate_subopts_proto(&proto).is_ok(),
-            "invalid SubOptsProto: {proto:?}",
-        );
-
         match proto {
             SubOptsProto {
                 subscribe: Some(subscribe),

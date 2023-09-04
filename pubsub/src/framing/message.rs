@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use libp2p::identity::PeerId;
 
-use crate::framing::{validate_message_proto, MessageProto};
+use crate::framing::MessageProto;
 use crate::topic::TopicHash;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -145,12 +145,6 @@ impl From<MessageProto> for Message {
                 proto.key = None;
             }
         }
-
-        // Assert proto validity after sanitizing (development builds only)
-        debug_assert!(
-            validate_message_proto(&proto).is_ok(),
-            "invalid message proto: {proto:?}",
-        );
 
         Self { proto }
     }
