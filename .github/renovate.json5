@@ -12,7 +12,8 @@
   rebaseStalePrs: true,
   lockFileMaintenance: {
     enabled: true,
-    automerge: true
+    automerge: true,
+    automergeType: "branch"
   },
   packageRules: [
     {
