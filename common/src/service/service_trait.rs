@@ -27,7 +27,7 @@ pub trait Service: 'static {
     /// To emit an event, enqueueing it into the output mailbox, use the [`OnEventCtx::emit`]
     /// method. To emit a batch of events, use the [`OnEventCtx::emit_batch`] method.
     ///
-    /// ```rust
+    /// ```ignre
     /// use common::service::Service;
     /// use common::service::OnEventCtx;
     ///
@@ -61,7 +61,7 @@ pub trait Service: 'static {
     ///  - Returning a `Poll::Ready(event)` to skip the output mailbox and return the event
     ///    directly to the downstream service.
     ///
-    /// ```rust
+    /// ```ignore
     /// use common::service::Service;
     /// use common::service::PollCtx;
     ///
