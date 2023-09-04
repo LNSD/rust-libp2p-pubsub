@@ -106,8 +106,8 @@ impl Handler {
         }
     }
 
-    fn on_fully_negotiated_inbound(&mut self, protocol: UpgradeOutput) {
-        let UpgradeOutput { socket, .. } = protocol;
+    fn on_fully_negotiated_inbound(&mut self, output: UpgradeOutput) {
+        let UpgradeOutput { socket, .. } = output;
 
         let codec = Codec::new(self.max_frame_size);
         let stream = Framed::new(socket, codec);
@@ -117,14 +117,8 @@ impl Handler {
         self.inbound_substream = Some(InboundSubstreamState::WaitingInput(stream));
     }
 
-    fn on_fully_negotiated_outbound(
-        &mut self,
-        FullyNegotiatedOutbound { protocol, .. }: FullyNegotiatedOutbound<
-            <Self as ConnectionHandler>::OutboundProtocol,
-            <Self as ConnectionHandler>::OutboundOpenInfo,
-        >,
-    ) {
-        let UpgradeOutput { socket, .. } = protocol;
+    fn on_fully_negotiated_outbound(&mut self, output: UpgradeOutput) {
+        let UpgradeOutput { socket, .. } = output;
 
         let codec = Codec::new(self.max_frame_size);
         let stream = Framed::new(socket, codec);
@@ -367,9 +361,9 @@ impl ConnectionHandler for Handler {
             }) => {
                 self.on_fully_negotiated_inbound(protocol);
             }
-            ConnectionEvent::FullyNegotiatedOutbound(fully_negotiated_outbound) => {
-                self.on_fully_negotiated_outbound(fully_negotiated_outbound)
-            }
+            ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
+                protocol, ..
+            }) => self.on_fully_negotiated_outbound(protocol),
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 error: StreamUpgradeError::Timeout,
                 ..
