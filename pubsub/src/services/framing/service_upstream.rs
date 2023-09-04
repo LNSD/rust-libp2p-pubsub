@@ -7,11 +7,11 @@ use prost::Message;
 use common::service::{OnEventCtx, Service};
 
 use crate::framing::{
-    validate_frame_proto, validate_message_proto, validate_subopts_proto, FrameProto as RawFrame,
-    Message as FrameMessage, MessageProto, SubOptsProto, SubscriptionAction,
+    FrameProto as RawFrame, Message as FrameMessage, MessageProto, SubOptsProto, SubscriptionAction,
 };
 
 use super::events::{UpstreamInEvent, UpstreamOutEvent};
+use super::validation::{validate_frame_proto, validate_message_proto, validate_subopts_proto};
 
 /// The upstream framing service is responsible for decoding, validating and processing the
 /// received frames and emitting the  received messages and subscription request events.
