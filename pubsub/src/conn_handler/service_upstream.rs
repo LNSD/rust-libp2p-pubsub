@@ -41,7 +41,7 @@ impl Service for UpstreamHandler {
 
     fn poll(
         &mut self,
-        svc_cx: &mut PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        mut svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
         loop {

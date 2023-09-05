@@ -27,7 +27,7 @@ pub trait Service: 'static {
     /// To emit an event, enqueueing it into the output mailbox, use the [`OnEventCtx::emit`]
     /// method. To emit a batch of events, use the [`OnEventCtx::emit_batch`] method.
     ///
-    /// ```ignre
+    /// ```ignore
     /// use common::service::Service;
     /// use common::service::OnEventCtx;
     ///
@@ -80,9 +80,16 @@ pub trait Service: 'static {
     ///```
     fn poll(
         &mut self,
-        svc_cx: &mut PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
+        let (mut inbox_cx, outbox_cx) = svc_cx.split();
+
+        let mut on_event_cx = outbox_cx.into();
+        while let Some(event) = inbox_cx.pop_next() {
+            self.on_event(&mut on_event_cx, event);
+        }
+
         Poll::Pending
     }
 }
