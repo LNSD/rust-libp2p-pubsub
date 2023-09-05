@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::task::{Context as TaskContext, Poll};
 
-use crate::service::context_handles::{OnEventCtx, PollCtx};
+use crate::service::context_handles::PollCtx;
 use crate::service::service_trait::Service;
 
 /// A service context is a wrapper around a service that can be used to send events to it and poll
@@ -78,21 +78,13 @@ impl<S: Service> ServiceContext for BufferedContext<S> {
     ///
     ///     If the `poll` method returns a `Poll::Ready` event, the polling process will stop any
     ///     further polling and the event will be returned to the downstream service.
-    ///  2. Process all the service input mailbox events. This triggers the [`Service::on_event`] method
-    ///     for each event, allowing the service state to be updated.
-    ///  3. Process all the service output mailbox events. This drains the output mailbox and returns
-    ///     the events to the downstream service.
+    ///  2. Process all the service output mailbox events. This drains the output mailbox and
+    ///     returns the events to the downstream service.
     fn poll(&mut self, cx: &mut TaskContext<'_>) -> Poll<S::OutEvent> {
         // Poll the service for events.
-        let mut svc_cx = PollCtx::new(&mut self.inbox, &mut self.outbox);
-        if let Poll::Ready(event) = self.service.poll(&mut svc_cx, cx) {
+        let svc_cx = PollCtx::new(&mut self.inbox, &mut self.outbox);
+        if let Poll::Ready(event) = self.service.poll(svc_cx, cx) {
             return Poll::Ready(event);
-        }
-
-        // Process the inbox events.
-        let mut svc_cx = OnEventCtx::new(&mut self.outbox);
-        while let Some(event) = self.inbox.pop_front() {
-            self.service.on_event(&mut svc_cx, event);
         }
 
         // Process the outbox events.

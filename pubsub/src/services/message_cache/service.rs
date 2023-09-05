@@ -6,7 +6,7 @@ use std::time::Duration;
 use futures::StreamExt;
 
 use common::heartbeat::Heartbeat;
-use common::service::{OnEventCtx, PollCtx, Service};
+use common::service::{PollCtx, Service};
 use common::ttl_cache::Cache;
 
 use crate::framing::Message;
@@ -67,44 +67,48 @@ impl Service for MessageCacheService {
     type InEvent = ServiceIn;
     type OutEvent = ();
 
-    fn on_event(&mut self, _svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
-        match ev {
-            ServiceIn::SubscriptionEvent(sub_ev) => match sub_ev {
-                SubscriptionEvent::Subscribed {
-                    message_id_fn,
-                    topic,
-                } => {
-                    // Register the topic's message id function
-                    let message_id_fn = message_id_fn.unwrap_or(Rc::new(default_message_id_fn));
-                    self.message_id_fn.insert(topic, message_id_fn);
-                }
-                SubscriptionEvent::Unsubscribed(topic) => {
-                    // Unregister the topic's message id function
-                    self.message_id_fn.remove(&topic);
-                }
-            },
-            ServiceIn::MessageReceived(message) | ServiceIn::MessagePublished(message) => {
-                let msg_id = match self.message_id_fn.get(&message.topic()) {
-                    None => {
-                        // Unknown topic
-                        return;
-                    }
-                    Some(id_fn) => id_fn(&message),
-                };
-
-                // Insert message in cache
-                self.cache.put(msg_id, ());
-            }
-        }
-    }
-
     fn poll(
         &mut self,
-        _svc_cx: &mut PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
+        let (mut in_cx, _out_cx) = svc_cx.split();
+
+        // Poll the heartbeat stream.
         if self.heartbeat.poll_next_unpin(cx).is_ready() {
             self.cache.clear_expired_entries();
+        }
+
+        // Process all the service input mailbox events.
+        while let Some(ev) = in_cx.pop_next() {
+            match ev {
+                ServiceIn::SubscriptionEvent(sub_ev) => match sub_ev {
+                    SubscriptionEvent::Subscribed {
+                        message_id_fn,
+                        topic,
+                    } => {
+                        // Register the topic's message id function
+                        let message_id_fn = message_id_fn.unwrap_or(Rc::new(default_message_id_fn));
+                        self.message_id_fn.insert(topic, message_id_fn);
+                    }
+                    SubscriptionEvent::Unsubscribed(topic) => {
+                        // Unregister the topic's message id function
+                        self.message_id_fn.remove(&topic);
+                    }
+                },
+                ServiceIn::MessageReceived(message) | ServiceIn::MessagePublished(message) => {
+                    let msg_id = match self.message_id_fn.get(&message.topic()) {
+                        None => {
+                            // Unknown topic
+                            continue;
+                        }
+                        Some(id_fn) => id_fn(&message),
+                    };
+
+                    // Insert message in cache
+                    self.cache.put(msg_id, ());
+                }
+            }
         }
 
         Poll::Pending
