@@ -13,7 +13,7 @@ pub trait Protocol {
 
     /// Returns the protocol's upgrade.
     ///
-    /// See [`ProtocolUpgrade`] for more information.
+    /// See [`ProtocolUpgrade`](crate::upgrade::ProtocolUpgrade) for more information.
     fn upgrade() -> Self::Upgrade;
 
     /// Returns the protocol's router service.
