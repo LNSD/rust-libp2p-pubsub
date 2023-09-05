@@ -6,10 +6,11 @@ use rand::random;
 
 use common_test as testlib;
 use common_test::service::noop_context;
-use pubsub::{
-    FrameMessage, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
-    ProtocolRouterSubscriptionEvent, TopicHash,
+use pubsub::protocol::{
+    ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
+    ProtocolRouterSubscriptionEvent,
 };
+use pubsub::{FrameMessage, TopicHash};
 
 use super::Router;
 

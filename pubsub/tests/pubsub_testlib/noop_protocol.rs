@@ -1,5 +1,6 @@
 use common::service::{OnEventCtx, Service};
-use pubsub::{Protocol, ProtocolId, ProtocolRouterInEvent, ProtocolRouterOutEvent};
+use pubsub::protocol::{Protocol, ProtocolRouterInEvent, ProtocolRouterOutEvent};
+use pubsub::upgrade::SimpleProtocolUpgrade;
 
 /// The protocol ID for the noop protocol.
 pub const NOOP_PROTOCOL_ID: &str = "/noop/1.0.0";
@@ -9,19 +10,16 @@ pub const NOOP_PROTOCOL_ID: &str = "/noop/1.0.0";
 pub struct NoopProtocol;
 
 impl Protocol for NoopProtocol {
-    type ProtocolId = NoopProtocolId;
+    type Upgrade = SimpleProtocolUpgrade<&'static str>;
     type RouterService = NoopProtocolRouter;
+
+    fn upgrade() -> Self::Upgrade {
+        SimpleProtocolUpgrade::new(NOOP_PROTOCOL_ID)
+    }
 
     fn router(&self) -> Self::RouterService {
         Default::default()
     }
-}
-
-/// The protocol ID for the noop protocol.
-pub struct NoopProtocolId;
-
-impl ProtocolId for NoopProtocolId {
-    const PROTOCOL_ID: &'static str = NOOP_PROTOCOL_ID;
 }
 
 /// The pubsub protocol router service for the noop protocol.

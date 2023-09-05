@@ -1,4 +1,5 @@
 use libp2p::core::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
+use libp2p::swarm::handler::{InboundUpgradeSend, OutboundUpgradeSend, UpgradeInfoSend};
 use libp2p::swarm::Stream;
 
 /// Output of the [`InboundUpgrade`] and [`OutboundUpgrade`] traits.
@@ -27,6 +28,15 @@ trait_set::trait_set! {
     ///   connections.
     pub trait ProtocolUpgrade = ProtocolUpgradeInfo
         + ProtocolInboundUpgrade<<Self as UpgradeInfo>::Info>
-        + ProtocolOutboundUpgrade<<Self as UpgradeInfo>::Info>
-        + Clone;
+        + ProtocolOutboundUpgrade<<Self as UpgradeInfo>::Info>;
+
+
+    /// Implemented automatically on all types that implement [`ProtocolUpgrade`]
+    /// and `Send + 'static`.
+    ///
+    /// Do not implement this trait yourself. Instead, please implement
+    /// [`ProtocolUpgrade`] sub-traits.
+    pub trait ProtocolUpgradeSend = UpgradeInfoSend +
+        InboundUpgradeSend<Output=ProtocolUpgradeOutput<<Self as UpgradeInfoSend>::Info>> +
+        OutboundUpgradeSend<Output=ProtocolUpgradeOutput<<Self as UpgradeInfoSend>::Info>>;
 }
