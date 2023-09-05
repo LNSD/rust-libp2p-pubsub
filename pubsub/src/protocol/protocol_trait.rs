@@ -2,7 +2,7 @@ use super::router_trait::ProtocolRouter;
 
 /// The pubsub protocol trait.
 ///
-/// This trait is used by the [`Behaviour`](super::behaviour::Behaviour) to identify the pubsub
+/// This trait is used by the [`Behaviour`](crate::behaviour::Behaviour) to identify the pubsub
 /// protocol and create a connection handler instance for the protocol as well as the
 /// [`ProtocolRouter`] instance responsible for routing messages to the appropriate peers.
 pub trait Protocol: 'static {
@@ -25,7 +25,7 @@ pub trait Protocol: 'static {
 
 /// The protocol id trait.
 ///
-/// This trait is used by the [`Behaviour`](super::behaviour::Behaviour) to identify the pubsub
+/// This trait is used by the [`Behaviour`](crate::behaviour::Behaviour) to identify the pubsub
 /// protocol and create a connection handler instance for the protocol.
 pub trait ProtocolId {
     // TODO: Revisit this after refactoring the Pubsub connection handler.
