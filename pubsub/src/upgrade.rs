@@ -1,7 +1,7 @@
 pub use simple::SimpleProtocolUpgrade;
 pub use upgrade_trait::{
     ProtocolInboundUpgrade, ProtocolOutboundUpgrade, ProtocolUpgrade, ProtocolUpgradeInfo,
-    ProtocolUpgradeOutput,
+    ProtocolUpgradeOutput, ProtocolUpgradeSend,
 };
 
 mod simple;

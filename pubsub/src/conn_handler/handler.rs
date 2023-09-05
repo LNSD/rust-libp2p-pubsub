@@ -7,7 +7,6 @@ use asynchronous_codec::Framed;
 use bytes::Bytes;
 use libp2p::swarm::handler::{
     ConnectionEvent, DialUpgradeError, FullyNegotiatedInbound, FullyNegotiatedOutbound,
-    InboundUpgradeSend, OutboundUpgradeSend, UpgradeInfoSend,
 };
 use libp2p::swarm::{
     ConnectionHandler, ConnectionHandlerEvent, KeepAlive, StreamUpgradeError, SubstreamProtocol,
@@ -18,7 +17,7 @@ use common::service::{BufferedContext, ServiceContext};
 use crate::conn_handler::events::{StreamHandlerIn, StreamHandlerOut};
 use crate::conn_handler::service_downstream::DownstreamHandler;
 use crate::conn_handler::service_upstream::UpstreamHandler;
-use crate::upgrade::{ProtocolUpgrade, ProtocolUpgradeOutput};
+use crate::upgrade::{ProtocolUpgradeOutput, ProtocolUpgradeSend};
 
 use super::codec::Codec;
 use super::events::{Command, Event};
@@ -54,7 +53,7 @@ pub struct Handler<U> {
 
 impl<U> Handler<U>
 where
-    U: ProtocolUpgrade + Send + 'static,
+    U: ProtocolUpgradeSend + 'static,
 {
     pub fn new(upgrade: U, max_frame_size: usize, idle_timeout: Duration) -> Self {
         Self {
@@ -70,16 +69,9 @@ where
     }
 }
 
-impl<U, TInfo> ConnectionHandler for Handler<U>
+impl<U> ConnectionHandler for Handler<U>
 where
-    TInfo: AsRef<str> + Clone + Send + 'static,
-    U: ProtocolUpgrade
-        + UpgradeInfoSend
-        + InboundUpgradeSend<Output = ProtocolUpgradeOutput<TInfo>>
-        + OutboundUpgradeSend<Output = ProtocolUpgradeOutput<TInfo>>
-        + Clone
-        + Send
-        + 'static,
+    U: ProtocolUpgradeSend + Clone,
 {
     type FromBehaviour = Command;
     type ToBehaviour = Event;
