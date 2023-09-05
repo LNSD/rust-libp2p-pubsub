@@ -7,6 +7,7 @@ use asynchronous_codec::Framed;
 use bytes::Bytes;
 use libp2p::swarm::handler::{
     ConnectionEvent, DialUpgradeError, FullyNegotiatedInbound, FullyNegotiatedOutbound,
+    InboundUpgradeSend, OutboundUpgradeSend, UpgradeInfoSend,
 };
 use libp2p::swarm::{
     ConnectionHandler, ConnectionHandlerEvent, KeepAlive, StreamUpgradeError, SubstreamProtocol,
@@ -17,19 +18,16 @@ use common::service::{BufferedContext, ServiceContext};
 use crate::conn_handler::events::{StreamHandlerIn, StreamHandlerOut};
 use crate::conn_handler::service_downstream::DownstreamHandler;
 use crate::conn_handler::service_upstream::UpstreamHandler;
-use crate::upgrade::{ProtocolUpgradeOutput, SimpleProtocolUpgrade};
+use crate::upgrade::{ProtocolUpgrade, ProtocolUpgradeOutput};
 
 use super::codec::Codec;
 use super::events::{Command, Event};
 
-type Upgrade = SimpleProtocolUpgrade<&'static str>;
-type UpgradeOutput = ProtocolUpgradeOutput<&'static str>;
-
 /// A connection handler that manages a single, inbound and outbound, long-lived substream over
 /// a connection with a peer.
-pub struct Handler {
-    /// Upgrade configuration for the protocol.
-    upgrade: Upgrade,
+pub struct Handler<U> {
+    /// The protocol upgrade.
+    upgrade: U,
 
     /// Maximum frame size.
     max_frame_size: usize,
@@ -54,8 +52,11 @@ pub struct Handler {
     idle_timeout: Duration,
 }
 
-impl Handler {
-    pub fn new(upgrade: Upgrade, max_frame_size: usize, idle_timeout: Duration) -> Self {
+impl<U> Handler<U>
+where
+    U: ProtocolUpgrade + Send + 'static,
+{
+    pub fn new(upgrade: U, max_frame_size: usize, idle_timeout: Duration) -> Self {
         Self {
             upgrade,
             max_frame_size,
@@ -67,46 +68,24 @@ impl Handler {
             idle_timeout,
         }
     }
-
-    fn on_fully_negotiated_inbound(&mut self, output: UpgradeOutput) {
-        let UpgradeOutput { socket, .. } = output;
-
-        let codec = Codec::new(self.max_frame_size);
-        let stream = Framed::new(socket, codec);
-
-        tracing::trace!("New fully negotiated inbound substream");
-
-        // The substream is fully negotiated. Initialize the substream handler.
-        self.inbound_substream
-            .do_send(StreamHandlerIn::Init(stream));
-    }
-
-    fn on_fully_negotiated_outbound(&mut self, output: UpgradeOutput) {
-        let UpgradeOutput { socket, .. } = output;
-
-        let codec = Codec::new(self.max_frame_size);
-        let stream = Framed::new(socket, codec);
-
-        tracing::trace!("New fully negotiated outbound substream");
-
-        // The substream is fully negotiated. Initialize the substream handler.
-        self.outbound_substream
-            .do_send(StreamHandlerIn::Init(stream));
-
-        // Send all queued messages into the outbound substream.
-        for frame in self.outbound_queue.drain(..) {
-            self.outbound_substream
-                .do_send(StreamHandlerIn::SendFrame(frame));
-        }
-    }
 }
 
-impl ConnectionHandler for Handler {
+impl<U, TInfo> ConnectionHandler for Handler<U>
+where
+    TInfo: AsRef<str> + Clone + Send + 'static,
+    U: ProtocolUpgrade
+        + UpgradeInfoSend
+        + InboundUpgradeSend<Output = ProtocolUpgradeOutput<TInfo>>
+        + OutboundUpgradeSend<Output = ProtocolUpgradeOutput<TInfo>>
+        + Clone
+        + Send
+        + 'static,
+{
     type FromBehaviour = Command;
     type ToBehaviour = Event;
     type Error = Infallible;
-    type InboundProtocol = Upgrade;
-    type OutboundProtocol = Upgrade;
+    type InboundProtocol = U;
+    type OutboundProtocol = U;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = ();
 
@@ -206,12 +185,36 @@ impl ConnectionHandler for Handler {
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
                 protocol, ..
             }) => {
-                self.on_fully_negotiated_inbound(protocol);
+                let ProtocolUpgradeOutput { socket, .. } = protocol;
+
+                let codec = Codec::new(self.max_frame_size);
+                let stream = Framed::new(socket, codec);
+
+                tracing::trace!("New fully negotiated inbound substream");
+
+                // The substream is fully negotiated. Initialize the substream handler.
+                self.inbound_substream
+                    .do_send(StreamHandlerIn::Init(stream));
             }
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
                 protocol, ..
             }) => {
-                self.on_fully_negotiated_outbound(protocol);
+                let ProtocolUpgradeOutput { socket, .. } = protocol;
+
+                let codec = Codec::new(self.max_frame_size);
+                let stream = Framed::new(socket, codec);
+
+                tracing::trace!("New fully negotiated outbound substream");
+
+                // The substream is fully negotiated. Initialize the substream handler.
+                self.outbound_substream
+                    .do_send(StreamHandlerIn::Init(stream));
+
+                // Send all queued messages into the outbound substream.
+                for frame in self.outbound_queue.drain(..) {
+                    self.outbound_substream
+                        .do_send(StreamHandlerIn::SendFrame(frame));
+                }
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 error: StreamUpgradeError::Timeout,

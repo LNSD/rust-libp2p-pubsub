@@ -41,7 +41,7 @@ use crate::services::subscriptions::{
 };
 use crate::subscription::Subscription;
 use crate::topic::{Hasher, Topic, TopicHash};
-use crate::upgrade::SimpleProtocolUpgrade as Upgrade;
+use crate::upgrade::SimpleProtocolUpgrade;
 
 pub struct Behaviour<P: Protocol> {
     /// The behaviour's configuration.
@@ -214,7 +214,7 @@ impl<P: Protocol> Behaviour<P> {
 }
 
 impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
-    type ConnectionHandler = Handler;
+    type ConnectionHandler = Handler<SimpleProtocolUpgrade<&'static str>>;
     type ToSwarm = Event;
 
     fn handle_established_inbound_connection(
@@ -234,7 +234,7 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
             });
 
         Ok(Handler::new(
-            Upgrade::new(P::protocol_id()),
+            SimpleProtocolUpgrade::new(P::protocol_id()),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
@@ -256,7 +256,7 @@ impl<P: Protocol> NetworkBehaviour for Behaviour<P> {
             });
 
         Ok(Handler::new(
-            Upgrade::new(P::protocol_id()),
+            SimpleProtocolUpgrade::new(P::protocol_id()),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
         ))
