@@ -1,4 +1,9 @@
-pub use handler::{Command, Event, Handler};
+pub use events::Command;
+pub use events::Event;
+pub use handler::Handler;
 
 mod codec;
+mod events;
 mod handler;
+mod service_downstream;
+mod service_upstream;
