@@ -15,7 +15,6 @@ use libp2p::swarm::{
 use libp2p::Multiaddr;
 
 use common::service::{BufferedContext, ServiceContext};
-use common::upgrade::SimpleUpgrade as Upgrade;
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
@@ -42,6 +41,7 @@ use crate::services::subscriptions::{
 };
 use crate::subscription::Subscription;
 use crate::topic::{Hasher, Topic, TopicHash};
+use crate::upgrade::SimpleProtocolUpgrade as Upgrade;
 
 pub struct Behaviour<P: Protocol> {
     /// The behaviour's configuration.

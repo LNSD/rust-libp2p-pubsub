@@ -9,22 +9,21 @@ use libp2p::swarm::handler::{
     ConnectionEvent, DialUpgradeError, FullyNegotiatedInbound, FullyNegotiatedOutbound,
 };
 use libp2p::swarm::{
-    ConnectionHandler, ConnectionHandlerEvent, KeepAlive, Stream, StreamUpgradeError,
-    SubstreamProtocol,
+    ConnectionHandler, ConnectionHandlerEvent, KeepAlive, StreamUpgradeError, SubstreamProtocol,
 };
 
 use common::service::{BufferedContext, ServiceContext};
-use common::upgrade::{SimpleUpgrade, SimpleUpgradeOutput};
 
 use crate::conn_handler::events::{StreamHandlerIn, StreamHandlerOut};
 use crate::conn_handler::service_downstream::DownstreamHandler;
 use crate::conn_handler::service_upstream::UpstreamHandler;
+use crate::upgrade::{ProtocolUpgradeOutput, SimpleProtocolUpgrade};
 
 use super::codec::Codec;
 use super::events::{Command, Event};
 
-type Upgrade = SimpleUpgrade<&'static str>;
-type UpgradeOutput = SimpleUpgradeOutput<&'static str, Stream>;
+type Upgrade = SimpleProtocolUpgrade<&'static str>;
+type UpgradeOutput = ProtocolUpgradeOutput<&'static str>;
 
 /// A connection handler that manages a single, inbound and outbound, long-lived substream over
 /// a connection with a peer.
