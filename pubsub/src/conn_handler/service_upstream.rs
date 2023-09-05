@@ -51,7 +51,7 @@ impl Service for UpstreamHandler {
                     if let Some(event) = svc_cx.pop_next() {
                         if let StreamHandlerIn::Init(stream) = event {
                             tracing::debug!("Initializing outbound substream");
-                            self.state = (SubstreamState::Idle(stream));
+                            self.state = SubstreamState::Idle(stream);
                             continue;
                         } else {
                             tracing::trace!("Dropping input event: substream handler not ready");
@@ -65,7 +65,7 @@ impl Service for UpstreamHandler {
                 SubstreamState::Idle(mut stream) => {
                     match stream.poll_next_unpin(cx) {
                         Poll::Ready(Some(Ok(message))) => {
-                            self.state = (SubstreamState::Idle(stream));
+                            self.state = SubstreamState::Idle(stream);
                             return Poll::Ready(StreamHandlerOut::FrameReceived(message));
                         }
                         Poll::Ready(Some(Err(err))) => {
@@ -73,15 +73,15 @@ impl Service for UpstreamHandler {
                             // Close this side of the stream. If the
                             // peer is still around, they will re-establish their
                             // outbound stream i.e. our inbound stream.
-                            self.state = (SubstreamState::Closing(stream));
+                            self.state = SubstreamState::Closing(stream);
                         }
                         // peer closed the stream
                         Poll::Ready(None) => {
                             tracing::debug!("Inbound stream closed by remote");
-                            self.state = (SubstreamState::Closing(stream));
+                            self.state = SubstreamState::Closing(stream);
                         }
                         Poll::Pending => {
-                            self.state = (SubstreamState::Idle(stream));
+                            self.state = SubstreamState::Idle(stream);
                             break;
                         }
                     }
@@ -99,7 +99,7 @@ impl Service for UpstreamHandler {
                             break;
                         }
                         Poll::Pending => {
-                            self.state = (SubstreamState::Closing(stream));
+                            self.state = SubstreamState::Closing(stream);
                             break;
                         }
                     }

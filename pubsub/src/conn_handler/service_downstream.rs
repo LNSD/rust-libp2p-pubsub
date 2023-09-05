@@ -61,7 +61,7 @@ impl Service for DownstreamHandler {
                     if let Some(event) = svc_cx.pop_next() {
                         if let StreamHandlerIn::Init(stream) = event {
                             tracing::debug!("Initializing outbound substream");
-                            self.state = (SubstreamState::Idle(stream));
+                            self.state = SubstreamState::Idle(stream);
                             continue;
                         } else {
                             tracing::trace!("Dropping input event: substream handler not ready");
@@ -74,11 +74,11 @@ impl Service for DownstreamHandler {
                 // Idle state
                 SubstreamState::Idle(stream) => {
                     if let Some(StreamHandlerIn::SendFrame(message)) = svc_cx.pop_next() {
-                        self.state = (SubstreamState::PendingSend(stream, message));
+                        self.state = SubstreamState::PendingSend(stream, message);
                         continue;
                     }
 
-                    self.state = (SubstreamState::Idle(stream));
+                    self.state = SubstreamState::Idle(stream);
                     break;
                 }
                 SubstreamState::PendingSend(mut stream, bytes) => {
@@ -109,7 +109,7 @@ impl Service for DownstreamHandler {
                 }
                 SubstreamState::PendingFlush(mut stream) => {
                     match Sink::poll_flush(Pin::new(&mut stream), cx) {
-                        Poll::Ready(Ok(())) => self.state = (SubstreamState::Idle(stream)),
+                        Poll::Ready(Ok(())) => self.state = SubstreamState::Idle(stream),
                         Poll::Ready(Err(err)) => {
                             tracing::debug!("Failed to flush outbound stream: {}", err);
                             self.state = SubstreamState::Disabled;
