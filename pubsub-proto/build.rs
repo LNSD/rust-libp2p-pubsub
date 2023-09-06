@@ -1,27 +1,45 @@
 use std::env;
-use std::error::Error;
+use std::path::PathBuf;
 use std::process::{exit, Command};
 
-fn main() -> Result<(), Box<dyn Error>> {
+/// Return the path to root of the crate being built.
+///
+/// The `CARGO_MANIFEST_DIR` env variable contains the path to the  directory containing the
+/// manifest for the package being built (the package containing the build script). Also note that
+/// this is the value of the current working directory of the build script when it starts.
+///
+/// https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+fn root_dir() -> PathBuf {
+    PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+}
+
+fn main() {
     // TODO: Check build requirements here and print a user friendly error message
     //       if they are not met.
 
-    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let src_dir = root_dir().join("src");
+    let proto_dir = root_dir().join("proto");
+    let buf_gen_yaml = root_dir().join("proto/buf.gen.yaml");
 
+    // Run `buf generate` to generate the protobuf code. See Buf CLI's generate documentation for
+    // more information: https://buf.build/docs/generate/overview
     let status = Command::new("buf")
         .arg("generate")
-        .arg("https://github.com/LNSD/waku-proto.git#branch=rust-waku")
+        .arg("--template")
+        .arg(&buf_gen_yaml)
         .arg("--path")
-        .arg("waku/relay")
+        .arg("libp2p/pubsub")
         .arg("--output")
-        .arg(out_dir)
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .arg(&src_dir)
+        .current_dir(&proto_dir)
         .status()
         .unwrap();
 
     if !status.success() {
-        exit(status.code().unwrap_or(-1))
+        eprintln!("Protobuf code generation failed: {}", status);
+        exit(status.code().unwrap_or(1))
     }
 
-    Ok(())
+    // Re-run this build script if any of the proto files have changed.
+    println!("cargo:rerun-if-changed=**/*.proto");
 }
