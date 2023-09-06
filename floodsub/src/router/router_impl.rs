@@ -146,6 +146,8 @@ impl Service for Router {
                         dest: peers,
                         message,
                     });
+                } else {
+                    tracing::debug!("No peers subscribed to topic: {:?}", topic);
                 }
             }
         }

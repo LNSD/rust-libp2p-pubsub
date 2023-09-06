@@ -64,9 +64,10 @@ impl Service for UpstreamHandler {
                 // Idle state
                 SubstreamState::Idle(mut stream) => {
                     match stream.poll_next_unpin(cx) {
-                        Poll::Ready(Some(Ok(message))) => {
+                        Poll::Ready(Some(Ok(bytes))) => {
+                            tracing::debug!("Received frame from inbound stream");
                             self.state = SubstreamState::Idle(stream);
-                            return Poll::Ready(StreamHandlerOut::FrameReceived(message));
+                            return Poll::Ready(StreamHandlerOut::FrameReceived(bytes));
                         }
                         Poll::Ready(Some(Err(err))) => {
                             tracing::debug!("Failed to read from inbound stream: {}", err);
