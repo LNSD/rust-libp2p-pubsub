@@ -118,7 +118,7 @@ jobs:
 
   proto:
     needs: changes
-    if: ${{ needs.outputs.changes.proto == 'true' }}
+    if: ${{ needs.changes.outputs.proto == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
