@@ -14,24 +14,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  changes: # changes detection
-    runs-on: ubuntu-latest
-    # Required permissions
-    permissions:
-      pull-requests: read
-    # Set job outputs to values from filter step
-    outputs:
-      proto: ${{ steps.filter.outputs.proto }}
-    steps:
-      - uses: actions/checkout@v4
-        name: Checkout code
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            proto:
-              - 'pubsub-proto/**/*.proto'
-
   test:
     needs: changes
     runs-on: ubuntu-latest
@@ -117,13 +99,13 @@ jobs:
           flags: integration
 
   proto:
-    needs: changes
-    if: ${{ needs.changes.outputs.proto == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: bufbuild/buf-lint-action@v1
         with:
