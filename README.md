@@ -34,8 +34,6 @@ is performed by the `build.rs` script and is run automatically when building the
 > **Note**
 > If the `cargo build` command fails, check first you have all the [build requirements](#build-requirements) installed.
 
-The proto files are located in a separate repository: https://github.com/LNSD/waku-proto/tree/rust-waku
-
 ## Supported Rust Versions
 
 This repository is built against the latest stable release. The minimum supported
