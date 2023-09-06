@@ -18,7 +18,7 @@ smallvec = "1.11.0"
 thiserror.workspace = true
 tracing.workspace = true
 trait-set = "0.3.0"
-unsigned-varint = { version = "0.7.1", features = ["asynchronous-codec"] }
+unsigned-varint = { version = "0.7.2", features = ["asynchronous-codec"] }
 
 [dev-dependencies]
 assert_matches.workspace = true
