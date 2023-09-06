@@ -1,4 +1,3 @@
-use std::collections::vec_deque::Drain;
 use std::collections::VecDeque;
 
 /// A service context inbox handle.
@@ -25,14 +24,6 @@ impl<'a, InEvent> InCtx<'a, InEvent> {
     /// Pop the next event from the input mailbox.
     pub fn pop_next(&mut self) -> Option<InEvent> {
         self.inbox.pop_front()
-    }
-
-    /// Get a `Drain` iterator over the input mailbox events.
-    ///
-    /// This is useful for draining the input mailbox in a loop. If the returned iterator is
-    /// dropped before it is fully consumed, the remaining events will be dropped as well.
-    pub fn drain(&mut self) -> Drain<'_, InEvent> {
-        self.inbox.drain(..)
     }
 }
 
@@ -117,14 +108,6 @@ impl<'a, InEvent, OutEvent> PollCtx<'a, InEvent, OutEvent> {
     /// Pop the next event from the input mailbox.
     pub fn pop_next(&mut self) -> Option<InEvent> {
         self.inbox.pop_next()
-    }
-
-    /// Get a `Drain` iterator over the input mailbox events.
-    ///
-    /// This is useful for draining the input mailbox in a loop. If the returned iterator is
-    /// dropped before it is fully consumed, the remaining events will be dropped as well.
-    pub fn drain(&mut self) -> Drain<'_, InEvent> {
-        self.inbox.drain()
     }
 
     /// Emit an event to the output mailbox.

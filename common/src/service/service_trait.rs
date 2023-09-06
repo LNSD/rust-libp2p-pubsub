@@ -53,7 +53,6 @@ pub trait Service: 'static {
     ///    events in the input mailbox. This can be useful to apply backpressure to the upstream
     ///    service.
     ///  - Using the [`PollCtx::pop_next`] method to pop the next event from the input mailbox.
-    ///  - Using the [`PollCtx::drain`] method to get a `Drain` iterator over the input mailbox events.
     ///
     /// On the other hand, to emit an event, one can use one of the following methods:
     ///  - Using the the [`PollCtx::emit`] to enqueue an event to the output mailbox. Or using the
