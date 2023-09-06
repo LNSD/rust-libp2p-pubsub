@@ -5,10 +5,9 @@ use libp2p::identity::PeerId;
 use prost::Message;
 
 use common::service::{OnEventCtx, Service};
+use pubsub_proto::pubsub::{FrameProto as RawFrame, MessageProto, SubOptsProto};
 
-use crate::framing::{
-    FrameProto as RawFrame, Message as FrameMessage, MessageProto, SubOptsProto, SubscriptionAction,
-};
+use crate::framing::{Message as FrameMessage, SubscriptionAction};
 
 use super::events::{UpstreamInEvent, UpstreamOutEvent};
 use super::validation::{validate_frame_proto, validate_message_proto, validate_subopts_proto};

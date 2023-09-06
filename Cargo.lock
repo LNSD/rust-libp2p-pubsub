@@ -1876,6 +1876,7 @@ dependencies = [
  "itertools",
  "libp2p",
  "prost",
+ "pubsub-proto",
  "rand",
  "sha2 0.10.7",
  "smallvec",
@@ -1885,6 +1886,13 @@ dependencies = [
  "tracing-futures",
  "trait-set",
  "unsigned-varint",
+]
+
+[[package]]
+name = "pubsub-proto"
+version = "0.1.0"
+dependencies = [
+ "prost",
 ]
 
 [[package]]

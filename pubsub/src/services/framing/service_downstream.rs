@@ -2,8 +2,9 @@ use bytes::{Bytes, BytesMut};
 use prost::Message;
 
 use common::service::{OnEventCtx, Service};
+use pubsub_proto::pubsub::FrameProto;
 
-use crate::framing::{Frame, FrameProto};
+use crate::framing::Frame;
 
 use super::events::{DownstreamInEvent, DownstreamOutEvent};
 

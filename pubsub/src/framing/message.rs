@@ -1,7 +1,8 @@
 use bytes::Bytes;
 use libp2p::identity::PeerId;
 
-use crate::framing::MessageProto;
+use pubsub_proto::pubsub::MessageProto;
+
 use crate::topic::TopicHash;
 
 #[derive(Clone, PartialEq, Debug)]

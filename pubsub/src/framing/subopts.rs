@@ -1,4 +1,5 @@
-use crate::framing::SubOptsProto;
+use pubsub_proto::pubsub::SubOptsProto;
+
 use crate::topic::TopicHash;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
