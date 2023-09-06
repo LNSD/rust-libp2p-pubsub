@@ -8,46 +8,50 @@ use libp2p::swarm::Stream;
 
 use common::service::{PollCtx, Service};
 
-use super::codec::Codec;
-use super::events::StreamHandlerIn;
+use super::codec::{Codec, Error};
+use super::events::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
 
 /// State of the outbound substream, opened either by us or by the remote.
-#[derive(Default)]
 enum SubstreamState {
-    /// Disabled state.
-    #[default]
-    Disabled,
     /// Waiting for the user to send a message. The idle state for an outbound substream.
     Idle(Framed<Stream, Codec>),
     /// Waiting to send a message to the remote.
     PendingSend(Framed<Stream, Codec>, Bytes),
     /// Waiting to flush the substream so that the data arrives to the remote.
     PendingFlush(Framed<Stream, Codec>),
+    /// Disabled state.
+    Disabled,
     /// An error occurred during processing.
     Poisoned,
 }
 
-#[derive(Default)]
 pub struct DownstreamHandler {
     state: SubstreamState,
 }
 
 impl DownstreamHandler {
+    /// Creates a new `DownstreamHandler` with the given stream.
+    pub fn new(stream: Framed<Stream, Codec>) -> Self {
+        Self {
+            state: SubstreamState::Idle(stream),
+        }
+    }
+
+    /// Returns `true` if the substream is idle.
+    pub fn is_idle(&self) -> bool {
+        matches!(self.state, SubstreamState::Idle(_))
+    }
+
     /// Returns `true` if the substream is in the process of sending a message.
     pub fn is_sending(&self) -> bool {
         matches!(self.state, SubstreamState::PendingSend(_, _))
             || matches!(self.state, SubstreamState::PendingFlush(_))
     }
-
-    /// Returns `true` if the substream is disabled.
-    pub fn is_disabled(&self) -> bool {
-        matches!(self.state, SubstreamState::Disabled)
-    }
 }
 
 impl Service for DownstreamHandler {
-    type InEvent = StreamHandlerIn<Framed<Stream, Codec>>;
-    type OutEvent = ();
+    type InEvent = StreamHandlerIn;
+    type OutEvent = Result<StreamHandlerOut, StreamHandlerError>;
 
     fn poll(
         &mut self,
@@ -56,21 +60,6 @@ impl Service for DownstreamHandler {
     ) -> Poll<Self::OutEvent> {
         loop {
             match std::mem::replace(&mut self.state, SubstreamState::Poisoned) {
-                // Disabled state
-                SubstreamState::Disabled => {
-                    if let Some(event) = svc_cx.pop_next() {
-                        if let StreamHandlerIn::Init(stream) = event {
-                            tracing::debug!("Initializing outbound substream");
-                            self.state = SubstreamState::Idle(stream);
-                            continue;
-                        } else {
-                            tracing::trace!("Dropping input event: substream handler not ready");
-                        }
-                    }
-
-                    self.state = SubstreamState::Disabled;
-                    break;
-                }
                 // Idle state
                 SubstreamState::Idle(stream) => {
                     if let Some(StreamHandlerIn::SendFrame(message)) = svc_cx.pop_next() {
@@ -92,6 +81,12 @@ impl Service for DownstreamHandler {
                                         "Failed to send message on outbound stream: {}",
                                         err
                                     );
+
+                                    // Emit an error event.
+                                    if let Error::IoError(err) = err {
+                                        svc_cx.emit(Err(StreamHandlerError::SendDataFailed(err)));
+                                    }
+
                                     self.state = SubstreamState::Disabled;
                                     break;
                                 }
@@ -99,6 +94,12 @@ impl Service for DownstreamHandler {
                         }
                         Poll::Ready(Err(err)) => {
                             tracing::debug!("Failed to send message on outbound stream: {}", err);
+
+                            // Emit an error event.
+                            if let Error::IoError(err) = err {
+                                svc_cx.emit(Err(StreamHandlerError::SendDataFailed(err)));
+                            }
+
                             self.state = SubstreamState::Disabled;
                             break;
                         }
@@ -112,10 +113,20 @@ impl Service for DownstreamHandler {
                     match Sink::poll_flush(Pin::new(&mut stream), cx) {
                         Poll::Ready(Ok(())) => {
                             tracing::trace!("Successfully flushed outbound stream");
-                            self.state = SubstreamState::Idle(stream)
+
+                            // Notify the connection handler about the sent frame.
+                            svc_cx.emit(Ok(StreamHandlerOut::FrameSent));
+
+                            self.state = SubstreamState::Idle(stream);
                         }
                         Poll::Ready(Err(err)) => {
                             tracing::debug!("Failed to flush outbound stream: {}", err);
+
+                            // Emit an error event.
+                            if let Error::IoError(err) = err {
+                                svc_cx.emit(Err(StreamHandlerError::FlushFailed(err)));
+                            }
+
                             self.state = SubstreamState::Disabled;
                             break;
                         }
@@ -124,6 +135,11 @@ impl Service for DownstreamHandler {
                             break;
                         }
                     }
+                }
+                SubstreamState::Disabled => {
+                    // The substream is disabled. This is the terminal state.
+                    self.state = SubstreamState::Disabled;
+                    break;
                 }
                 SubstreamState::Poisoned => {
                     unreachable!("Error occurred during outbound stream processing")

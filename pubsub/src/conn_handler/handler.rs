@@ -32,13 +32,13 @@ pub struct Handler<U> {
     max_frame_size: usize,
 
     /// Queue of values that we want to send to the remote.
-    outbound_queue: VecDeque<Bytes>,
+    send_queue: VecDeque<Bytes>,
 
     /// The single long-lived outbound substream.
-    outbound_substream: BufferedContext<DownstreamHandler>,
+    outbound_substream: Option<BufferedContext<DownstreamHandler>>,
 
     /// The single long-lived inbound substream.
-    inbound_substream: BufferedContext<UpstreamHandler>,
+    inbound_substream: Option<BufferedContext<UpstreamHandler>>,
 
     /// Flag indicating that an outbound substream is being established to prevent duplicate
     /// requests.
@@ -62,7 +62,7 @@ where
             outbound_substream: Default::default(),
             inbound_substream: Default::default(),
             outbound_substream_establishing: false,
-            outbound_queue: Default::default(),
+            send_queue: Default::default(),
             last_io_activity: Instant::now(),
             idle_timeout,
         }
@@ -86,8 +86,10 @@ where
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
-        if self.outbound_substream.is_sending() {
-            return KeepAlive::Yes;
+        if let Some(outbound_substream) = self.outbound_substream.as_ref() {
+            if outbound_substream.is_sending() {
+                return KeepAlive::Yes;
+            }
         }
 
         KeepAlive::Until(self.last_io_activity + self.idle_timeout)
@@ -105,8 +107,8 @@ where
         >,
     > {
         // determine if we need to create the outbound stream
-        if !self.outbound_queue.is_empty()
-            && self.outbound_substream.is_disabled()
+        if !self.send_queue.is_empty()
+            && self.outbound_substream.is_none()
             && !self.outbound_substream_establishing
         {
             self.outbound_substream_establishing = true;
@@ -119,23 +121,78 @@ where
             });
         }
 
-        // Poll the inbound substream (upstream).
-        if let Poll::Ready(ev) = self.inbound_substream.poll(cx) {
-            match ev {
-                StreamHandlerOut::FrameReceived(bytes) => {
-                    // Update the last IO activity time.
-                    self.last_io_activity = Instant::now();
+        if let Some(mut inbound_substream) = self.inbound_substream.take() {
+            // Poll the inbound substream (upstream).
+            if let Poll::Ready(ev) = inbound_substream.poll(cx) {
+                match ev {
+                    Ok(StreamHandlerOut::FrameReceived(bytes)) => {
+                        // Update the last IO activity time.
+                        self.last_io_activity = Instant::now();
 
-                    // Notify the behaviour about the received frame.
-                    return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
-                        Event::FrameReceived(bytes),
-                    ));
+                        // Re-insert the substream into the handler.
+                        self.inbound_substream = Some(inbound_substream);
+
+                        // Notify the behaviour about the received frame.
+                        return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
+                            Event::FrameReceived(bytes),
+                        ));
+                    }
+                    Err(err) => {
+                        tracing::debug!("Inbound substream error: {}", err);
+
+                        // Drop the inbound substream.
+                        self.inbound_substream = None;
+                    }
+                    _ => {
+                        unreachable!("unexpected event: {:?}", ev);
+                    }
                 }
+            } else {
+                // Re-insert the substream into the handler.
+                self.inbound_substream = Some(inbound_substream);
             }
         }
 
-        // Poll outbound stream (downstream).
-        let _ = self.outbound_substream.poll(cx);
+        if let Some(mut outbound_substream) = self.outbound_substream.take() {
+            // If the outbound substream is idle, try to send the next message from the send
+            // queue.
+            if outbound_substream.is_idle() {
+                if let Some(msg) = self.send_queue.pop_front() {
+                    // Notify the outbound substream handler about the message.
+                    outbound_substream.do_send(StreamHandlerIn::SendFrame(msg));
+                }
+            }
+
+            // Poll outbound stream (downstream).
+            if let Poll::Ready(ev) = outbound_substream.poll(cx) {
+                match ev {
+                    Ok(StreamHandlerOut::FrameSent) => {
+                        // Update the last IO activity time.
+                        self.last_io_activity = Instant::now();
+
+                        // Re-insert the substream into the handler.
+                        self.outbound_substream = Some(outbound_substream);
+
+                        // Notify the behaviour about the sent frame.
+                        return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
+                            Event::FrameSent,
+                        ));
+                    }
+                    Err(err) => {
+                        tracing::debug!("Outbound substream error: {}", err);
+
+                        // Drop the outbound substream.
+                        self.outbound_substream = None;
+                    }
+                    _ => {
+                        unreachable!("unexpected event: {:?}", ev);
+                    }
+                }
+            } else {
+                // Re-insert the substream into the handler.
+                self.outbound_substream = Some(outbound_substream);
+            }
+        }
 
         Poll::Pending
     }
@@ -144,18 +201,8 @@ where
         tracing::trace!(?event, "Received behaviour event");
         match event {
             Command::SendFrame(msg) => {
-                // If the outbound substream is disabled, queue the message. Otherwise, send it
-                // into the outbound substream handler mailbox.
-                if self.outbound_substream.is_disabled() {
-                    self.outbound_queue.push_back(msg);
-                } else {
-                    // Update the last IO activity time.
-                    self.last_io_activity = Instant::now();
-
-                    // Notify the outbound substream handler about the message.
-                    self.outbound_substream
-                        .do_send(StreamHandlerIn::SendFrame(msg))
-                }
+                // Add the message to the send queue.
+                self.send_queue.push_back(msg);
             }
         }
     }
@@ -185,8 +232,7 @@ where
                 tracing::trace!("New fully negotiated inbound substream");
 
                 // The substream is fully negotiated. Initialize the substream handler.
-                self.inbound_substream
-                    .do_send(StreamHandlerIn::Init(stream));
+                self.inbound_substream = Some(BufferedContext::new(UpstreamHandler::new(stream)));
             }
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
                 protocol, ..
@@ -199,14 +245,8 @@ where
                 tracing::trace!("New fully negotiated outbound substream");
 
                 // The substream is fully negotiated. Initialize the substream handler.
-                self.outbound_substream
-                    .do_send(StreamHandlerIn::Init(stream));
-
-                // Send all queued messages into the outbound substream.
-                for frame in self.outbound_queue.drain(..) {
-                    self.outbound_substream
-                        .do_send(StreamHandlerIn::SendFrame(frame));
-                }
+                self.outbound_substream =
+                    Some(BufferedContext::new(DownstreamHandler::new(stream)));
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 error: StreamUpgradeError::Timeout,
