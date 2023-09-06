@@ -2,3 +2,6 @@
 * text=auto eol=lf
 
 Cargo.lock binary linguist-generated=true
+
+# Mark all files in the `gen` directory as generated.
+**/gen/** linguist-generated=true

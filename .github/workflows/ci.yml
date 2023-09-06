@@ -96,3 +96,22 @@ jobs:
         with:
           files: it-lcov.info
           flags: integration
+
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: bufbuild/buf-lint-action@v1
+        with:
+          input: pubsub-proto/proto
+
+      # Perform breaking change detection against the `main` branch
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          input: "pubsub-proto/proto"
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,ref=HEAD~1,subdir=pubsub-proto/proto"
