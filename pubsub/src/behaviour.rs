@@ -306,6 +306,7 @@ where
                     },
                 ));
             }
+            HandlerEvent::FrameSent => {}
         }
     }
 

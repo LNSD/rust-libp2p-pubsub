@@ -8,21 +8,19 @@ use libp2p::swarm::Stream;
 use common::service::{PollCtx, Service};
 
 use super::codec::{Codec, Error};
-use super::events::{StreamHandlerIn, StreamHandlerOut};
+use super::events::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
 
 /// State of the inbound substream.
 ///
 /// This enum acts as a state machine for the inbound substream. It is used to process inbound
 /// messages and close the substream.
-#[derive(Default)]
 enum SubstreamState {
-    /// Disabled state.
-    #[default]
-    Disabled,
     /// Waiting for a message from the remote. The idle state for an inbound substream.
     Idle(Framed<Stream, Codec>),
     /// The substream is being closed.
     Closing(Framed<Stream, Codec>),
+    /// The substream is disabled.
+    Disabled,
     /// An error occurred during processing.
     ///
     /// This state is used to poison the substream handler and prevent further processing.
@@ -30,14 +28,22 @@ enum SubstreamState {
     Poisoned,
 }
 
-#[derive(Default)]
 pub struct UpstreamHandler {
     state: SubstreamState,
 }
 
+impl UpstreamHandler {
+    /// Creates a new `UpstreamHandler` with the given stream.
+    pub fn new(stream: Framed<Stream, Codec>) -> Self {
+        Self {
+            state: SubstreamState::Idle(stream),
+        }
+    }
+}
+
 impl Service for UpstreamHandler {
-    type InEvent = StreamHandlerIn<Framed<Stream, Codec>>;
-    type OutEvent = StreamHandlerOut;
+    type InEvent = StreamHandlerIn;
+    type OutEvent = Result<StreamHandlerOut, StreamHandlerError>;
 
     fn poll(
         &mut self,
@@ -46,28 +52,13 @@ impl Service for UpstreamHandler {
     ) -> Poll<Self::OutEvent> {
         loop {
             match std::mem::replace(&mut self.state, SubstreamState::Poisoned) {
-                // Disabled state
-                SubstreamState::Disabled => {
-                    if let Some(event) = svc_cx.pop_next() {
-                        if let StreamHandlerIn::Init(stream) = event {
-                            tracing::debug!("Initializing outbound substream");
-                            self.state = SubstreamState::Idle(stream);
-                            continue;
-                        } else {
-                            tracing::trace!("Dropping input event: substream handler not ready");
-                        }
-                    }
-
-                    self.state = SubstreamState::Disabled;
-                    break;
-                }
                 // Idle state
                 SubstreamState::Idle(mut stream) => {
                     match stream.poll_next_unpin(cx) {
                         Poll::Ready(Some(Ok(message))) => {
                             tracing::trace!("Received frame from inbound stream");
                             self.state = SubstreamState::Idle(stream);
-                            return Poll::Ready(StreamHandlerOut::FrameReceived(message));
+                            return Poll::Ready(Ok(StreamHandlerOut::FrameReceived(message)));
                         }
                         Poll::Ready(Some(Err(err))) => {
                             match err {
@@ -83,6 +74,10 @@ impl Service for UpstreamHandler {
                                 }
                                 Error::IoError(e) => {
                                     tracing::debug!("Failed to read from inbound stream: {}", e);
+
+                                    // Emit an error event.
+                                    svc_cx.emit(Err(StreamHandlerError::ReadDataFailed(e)));
+
                                     // Close this side of the stream. If the
                                     // peer is still around, they will re-establish their
                                     // outbound stream i.e. our inbound stream.
@@ -93,6 +88,10 @@ impl Service for UpstreamHandler {
                         // peer closed the stream
                         Poll::Ready(None) => {
                             tracing::debug!("Inbound stream closed by remote");
+
+                            // Emit an error event.
+                            svc_cx.emit(Err(StreamHandlerError::ClosedByRemote));
+
                             self.state = SubstreamState::Closing(stream);
                         }
                         Poll::Pending => {
@@ -104,12 +103,16 @@ impl Service for UpstreamHandler {
                 SubstreamState::Closing(mut stream) => {
                     match Sink::poll_close(Pin::new(&mut stream), cx) {
                         Poll::Ready(res) => {
-                            if let Err(err) = res {
+                            if let Err(Error::IoError(err)) = res {
                                 // Don't close the connection but just drop the inbound substream.
                                 // In case the remote has more to send, they will open up a new
                                 // substream.
                                 tracing::debug!("Inbound substream error while closing: {}", err);
+
+                                // Emit an error event.
+                                svc_cx.emit(Err(StreamHandlerError::CloseFailed(err)));
                             }
+
                             self.state = SubstreamState::Disabled;
                             break;
                         }
@@ -118,6 +121,11 @@ impl Service for UpstreamHandler {
                             break;
                         }
                     }
+                }
+                SubstreamState::Disabled => {
+                    // The substream is disabled. This is the terminal state.
+                    self.state = SubstreamState::Disabled;
+                    break;
                 }
                 SubstreamState::Poisoned => {
                     unreachable!("Error occurred during inbound stream processing")
