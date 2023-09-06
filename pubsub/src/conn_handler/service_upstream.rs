@@ -7,7 +7,7 @@ use libp2p::swarm::Stream;
 
 use common::service::{PollCtx, Service};
 
-use super::codec::Codec;
+use super::codec::{Codec, Error};
 use super::events::{StreamHandlerIn, StreamHandlerOut};
 
 /// State of the inbound substream.
@@ -64,17 +64,31 @@ impl Service for UpstreamHandler {
                 // Idle state
                 SubstreamState::Idle(mut stream) => {
                     match stream.poll_next_unpin(cx) {
-                        Poll::Ready(Some(Ok(bytes))) => {
-                            tracing::debug!("Received frame from inbound stream");
+                        Poll::Ready(Some(Ok(message))) => {
+                            tracing::trace!("Received frame from inbound stream");
                             self.state = SubstreamState::Idle(stream);
-                            return Poll::Ready(StreamHandlerOut::FrameReceived(bytes));
+                            return Poll::Ready(StreamHandlerOut::FrameReceived(message));
                         }
                         Poll::Ready(Some(Err(err))) => {
-                            tracing::debug!("Failed to read from inbound stream: {}", err);
-                            // Close this side of the stream. If the
-                            // peer is still around, they will re-establish their
-                            // outbound stream i.e. our inbound stream.
-                            self.state = SubstreamState::Closing(stream);
+                            match err {
+                                e @ Error::MaxMessageLenExceeded => {
+                                    tracing::trace!("Ignoring received message: {}", e);
+                                    self.state = SubstreamState::Idle(stream);
+                                    continue;
+                                }
+                                e @ Error::LengthPrefixError(_) => {
+                                    tracing::trace!("Ignoring received message: {}", e);
+                                    self.state = SubstreamState::Idle(stream);
+                                    continue;
+                                }
+                                Error::IoError(e) => {
+                                    tracing::debug!("Failed to read from inbound stream: {}", e);
+                                    // Close this side of the stream. If the
+                                    // peer is still around, they will re-establish their
+                                    // outbound stream i.e. our inbound stream.
+                                    self.state = SubstreamState::Closing(stream);
+                                }
+                            }
                         }
                         // peer closed the stream
                         Poll::Ready(None) => {
