@@ -13,6 +13,7 @@ futures.workspace = true
 hex_fmt = "0.3.0"
 libp2p.workspace = true
 prost = "0.12.0"
+pubsub-proto = { version = "0.1.0", path = "../pubsub-proto" }
 sha2 = "0.10.7"
 smallvec = "1.11.0"
 thiserror.workspace = true

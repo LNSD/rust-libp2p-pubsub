@@ -1,6 +1,7 @@
+use pubsub_proto::pubsub::FrameProto;
+
 use crate::framing::message::Message;
 use crate::framing::subopts::SubscriptionAction;
-use crate::framing::FrameProto;
 
 // TODO: Add control messages support
 #[derive(Clone, Debug, Default)]

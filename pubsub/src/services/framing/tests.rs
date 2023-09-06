@@ -8,8 +8,9 @@ use rand::random;
 
 use common_test as testlib;
 use common_test::service::noop_context;
+use pubsub_proto::pubsub::FrameProto;
 
-use crate::framing::{Frame, FrameProto, Message as FrameMessage, SubscriptionAction};
+use crate::framing::{Frame, Message as FrameMessage, SubscriptionAction};
 use crate::topic::TopicHash;
 
 use super::events::{DownstreamInEvent, DownstreamOutEvent, UpstreamInEvent, UpstreamOutEvent};

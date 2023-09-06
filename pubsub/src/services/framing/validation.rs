@@ -7,7 +7,7 @@
 
 use libp2p::identity::PeerId;
 
-use crate::framing::{ControlMessageProto, FrameProto, MessageProto, SubOptsProto};
+use pubsub_proto::pubsub::{ControlMessageProto, FrameProto, MessageProto, SubOptsProto};
 
 /// Errors that can occur when validating a [`FrameProto`].
 ///
