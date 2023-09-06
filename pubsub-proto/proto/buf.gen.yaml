@@ -1,13 +1,21 @@
 version: v1
 plugins:
-  - plugin: buf.build/community/neoeinstein-prost:v0.2.3
+  # buf.build/community/neoeinstein-prost:v0.2.3
+  - plugin: prost
     out: gen/
     opt:
+      # Configure the code generator to generate Rust bytes::Bytes fields for Protobuf bytes type fields.
       - bytes=.
+      # Configures the code generator to not use the prost_types crate for Protobuf well-known types, and instead
+      # generate Protobuf well-known types from their .proto definitions.
       - compile_well_known_types
-  - name: prost-crate
-    out: .
-    opt:
-      - include_file=gen/mod.rs
-      - no_features
+
+  # buf.build/community/neoeinstein-prost-crate:v0.3.1
+  - plugin: prost-crate
+    out: gen/
     strategy: all
+    opt:
+      # Set the name for the generated include file.
+      - include_file=mod.rs
+      # Disable the generation of feature flags in the include file or in the Cargo manifest.
+      - no_features
