@@ -18,7 +18,6 @@ pub struct Rpc {
     #[prost(message, optional, tag = "3")]
     pub control: ::core::option::Option<ControlMessage>,
 }
-
 /// Nested message and enum types in `RPC`.
 pub mod rpc {
     #[allow(clippy::derive_partial_eq_without_eq)]
@@ -31,7 +30,6 @@ pub mod rpc {
         pub topic_id: ::core::option::Option<::prost::alloc::string::String>,
     }
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Message {
@@ -48,7 +46,6 @@ pub struct Message {
     #[prost(bytes = "bytes", optional, tag = "6")]
     pub key: ::core::option::Option<::prost::bytes::Bytes>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ControlMessage {
@@ -61,7 +58,6 @@ pub struct ControlMessage {
     #[prost(message, repeated, tag = "4")]
     pub prune: ::prost::alloc::vec::Vec<ControlPrune>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ControlIHave {
@@ -70,21 +66,18 @@ pub struct ControlIHave {
     #[prost(bytes = "bytes", repeated, tag = "2")]
     pub message_ids: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ControlIWant {
     #[prost(bytes = "bytes", repeated, tag = "1")]
     pub message_ids: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ControlGraft {
     #[prost(string, optional, tag = "1")]
     pub topic_id: ::core::option::Option<::prost::alloc::string::String>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ControlPrune {
@@ -97,7 +90,6 @@ pub struct ControlPrune {
     #[prost(uint64, optional, tag = "3")]
     pub backoff: ::core::option::Option<u64>,
 }
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PeerInfo {
@@ -106,7 +98,6 @@ pub struct PeerInfo {
     #[prost(bytes = "bytes", optional, tag = "2")]
     pub signed_peer_record: ::core::option::Option<::prost::bytes::Bytes>,
 }
-
 /// topicID = hash(topicDescriptor); (not the topic.name)
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -118,7 +109,6 @@ pub struct TopicDescriptor {
     #[prost(message, optional, tag = "3")]
     pub enc: ::core::option::Option<topic_descriptor::EncOpts>,
 }
-
 /// Nested message and enum types in `TopicDescriptor`.
 pub mod topic_descriptor {
     #[allow(clippy::derive_partial_eq_without_eq)]
@@ -130,7 +120,6 @@ pub mod topic_descriptor {
         #[prost(bytes = "bytes", repeated, tag = "2")]
         pub keys: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
     }
-
     /// Nested message and enum types in `AuthOpts`.
     pub mod auth_opts {
         #[derive(
@@ -145,7 +134,6 @@ pub mod topic_descriptor {
             /// web of trust, certificates can allow publisher set to grow
             Wot = 2,
         }
-
         impl AuthMode {
             /// String value of the enum field names used in the ProtoBuf definition.
             ///
@@ -169,7 +157,6 @@ pub mod topic_descriptor {
             }
         }
     }
-
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct EncOpts {
@@ -179,7 +166,6 @@ pub mod topic_descriptor {
         #[prost(bytes = "bytes", repeated, tag = "2")]
         pub key_hashes: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
     }
-
     /// Nested message and enum types in `EncOpts`.
     pub mod enc_opts {
         #[derive(
@@ -194,7 +180,6 @@ pub mod topic_descriptor {
             /// web of trust, certificates can allow publisher set to grow
             Wot = 2,
         }
-
         impl EncMode {
             /// String value of the enum field names used in the ProtoBuf definition.
             ///

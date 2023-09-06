@@ -132,5 +132,5 @@ jobs:
       # Perform breaking change detection against the `main` branch
       - uses: bufbuild/buf-breaking-action@v1
         with:
-          against-input: "pubsub-proto/proto"
+          input: "pubsub-proto/proto"
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,ref=HEAD~1,subdir=pubsub-proto/proto"
