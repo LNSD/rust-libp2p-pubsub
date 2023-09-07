@@ -9,7 +9,7 @@ use libp2p::swarm::Stream;
 use common::service::{PollCtx, Service};
 
 use super::codec::{Codec, Error};
-use super::events::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
+use super::events_stream_handler::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
 
 /// State of the outbound substream, opened either by us or by the remote.
 enum SubstreamState {
@@ -25,11 +25,11 @@ enum SubstreamState {
     Poisoned,
 }
 
-pub struct DownstreamHandler {
+pub struct SendOnlyStreamHandler {
     state: SubstreamState,
 }
 
-impl DownstreamHandler {
+impl SendOnlyStreamHandler {
     /// Creates a new `DownstreamHandler` with the given stream.
     pub fn new(stream: Framed<Stream, Codec>) -> Self {
         Self {
@@ -49,7 +49,7 @@ impl DownstreamHandler {
     }
 }
 
-impl Service for DownstreamHandler {
+impl Service for SendOnlyStreamHandler {
     type InEvent = StreamHandlerIn;
     type OutEvent = Result<StreamHandlerOut, StreamHandlerError>;
 
@@ -62,7 +62,7 @@ impl Service for DownstreamHandler {
             match std::mem::replace(&mut self.state, SubstreamState::Poisoned) {
                 // Idle state
                 SubstreamState::Idle(stream) => {
-                    if let Some(StreamHandlerIn::SendFrame(message)) = svc_cx.pop_next() {
+                    if let Some(StreamHandlerIn::Send(message)) = svc_cx.pop_next() {
                         tracing::trace!("Sending message on outbound stream");
                         self.state = SubstreamState::PendingSend(stream, message);
                         continue;
@@ -115,7 +115,7 @@ impl Service for DownstreamHandler {
                             tracing::trace!("Successfully flushed outbound stream");
 
                             // Notify the connection handler about the sent frame.
-                            svc_cx.emit(Ok(StreamHandlerOut::FrameSent));
+                            svc_cx.emit(Ok(StreamHandlerOut::SendAck));
 
                             self.state = SubstreamState::Idle(stream);
                         }

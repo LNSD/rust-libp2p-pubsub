@@ -8,7 +8,7 @@ use libp2p::swarm::Stream;
 use common::service::{PollCtx, Service};
 
 use super::codec::{Codec, Error};
-use super::events::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
+use super::events_stream_handler::{StreamHandlerError, StreamHandlerIn, StreamHandlerOut};
 
 /// State of the inbound substream.
 ///
@@ -28,12 +28,12 @@ enum SubstreamState {
     Poisoned,
 }
 
-pub struct UpstreamHandler {
+pub struct RecvOnlyStreamHandler {
     state: SubstreamState,
 }
 
-impl UpstreamHandler {
-    /// Creates a new `UpstreamHandler` with the given stream.
+impl RecvOnlyStreamHandler {
+    /// Creates a new stream handler with the given stream.
     pub fn new(stream: Framed<Stream, Codec>) -> Self {
         Self {
             state: SubstreamState::Idle(stream),
@@ -41,7 +41,7 @@ impl UpstreamHandler {
     }
 }
 
-impl Service for UpstreamHandler {
+impl Service for RecvOnlyStreamHandler {
     type InEvent = StreamHandlerIn;
     type OutEvent = Result<StreamHandlerOut, StreamHandlerError>;
 
