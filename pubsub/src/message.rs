@@ -3,6 +3,7 @@
 //!
 //! This module contains the public API type of a pubsub message.
 
+use bytes::Bytes;
 use libp2p::identity::PeerId;
 
 use crate::topic::TopicHash;
@@ -15,7 +16,7 @@ pub struct Message {
     /// The data of this message.
     pub data: Vec<u8>,
     /// The sequence number of this message.
-    pub sequence_number: Option<u64>,
+    pub sequence_number: Option<Bytes>,
     /// The topic this message is published to.
     pub topic: TopicHash,
     /// The signature of this message.
@@ -32,6 +33,23 @@ impl Message {
             from: None,
             data: data.into(),
             sequence_number: None,
+            topic: topic.into(),
+            signature: None,
+            key: None,
+        }
+    }
+
+    /// Creates a new message with a sequence number.
+    #[must_use]
+    pub fn new_with_sequence_number(
+        topic: impl Into<TopicHash>,
+        data: impl Into<Vec<u8>>,
+        seq_no: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            from: None,
+            data: data.into(),
+            sequence_number: Some(Bytes::from(seq_no.into())),
             topic: topic.into(),
             signature: None,
             key: None,

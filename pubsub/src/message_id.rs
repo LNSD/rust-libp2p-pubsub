@@ -64,14 +64,15 @@ pub fn default_message_id_fn(msg: &FrameMessage) -> MessageId {
     // default message id is: source + sequence number
     // NOTE: If either the peer_id or source is not provided, we set to 0;
     let mut source_string = if let Some(peer_id) = msg.source().as_ref() {
-        peer_id.to_base58()
+        peer_id.to_base58().into_bytes()
     } else {
         PeerId::from_bytes(&[0, 1, 0])
-            .expect("Valid peer id")
+            .unwrap()
             .to_base58()
+            .into_bytes()
     };
-    source_string.push_str(&msg.sequence_number().unwrap_or_default().to_string());
-    MessageId::new(source_string.into_bytes())
+    source_string.extend(msg.sequence_number().unwrap_or_default());
+    MessageId::new(source_string)
 }
 
 #[cfg(test)]
@@ -82,11 +83,17 @@ mod tests {
 
     use super::*;
 
+    /// Helper function to create a random topic.
     fn new_test_topic() -> IdentTopic {
         IdentTopic::new(format!("/test-{}/0.1.0", random::<u32>()))
     }
 
-    fn new_test_message(source: Option<PeerId>, seqno: Option<u64>) -> FrameMessage {
+    /// Helper function to create a random sequence number.
+    fn new_test_seqno() -> Bytes {
+        Bytes::from(random::<u32>().to_be_bytes().to_vec())
+    }
+
+    fn new_test_message(source: Option<PeerId>, seqno: Option<Bytes>) -> FrameMessage {
         let mut message = FrameMessage::new(new_test_topic(), b"test-data".to_vec());
         message.set_source(source);
         message.set_sequence_number(seqno);
@@ -97,7 +104,7 @@ mod tests {
     fn default_message_id_fn_should_return_same_id_for_same_message() {
         //// Given
         let source = PeerId::random();
-        let message = new_test_message(Some(source), Some(644222));
+        let message = new_test_message(Some(source), Some(new_test_seqno()));
 
         let id_fn: Box<MessageIdFn> = Box::new(default_message_id_fn);
 
@@ -112,7 +119,7 @@ mod tests {
     #[test]
     fn default_message_id_fn_should_return_same_id_for_same_message_no_source() {
         //// Given
-        let message = new_test_message(None, Some(644222));
+        let message = new_test_message(None, Some(new_test_seqno()));
 
         let id_fn: Box<MessageIdFn> = Box::new(default_message_id_fn);
 

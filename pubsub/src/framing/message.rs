@@ -32,10 +32,10 @@ impl Message {
     pub fn new_with_sequence_number(
         topic: impl Into<TopicHash>,
         data: impl Into<Vec<u8>>,
-        seq_no: Option<u64>,
+        seq_no: impl Into<Vec<u8>>,
     ) -> Self {
         let mut rpc = Self::new(topic, data);
-        rpc.set_sequence_number(seq_no);
+        rpc.set_sequence_number(Some(Bytes::from(seq_no.into())));
         rpc
     }
 
@@ -67,17 +67,12 @@ impl Message {
     }
 
     #[must_use]
-    pub fn sequence_number(&self) -> Option<u64> {
-        self.proto.seqno.as_ref().map(|bytes| {
-            // From pubsub spec: https://github.com/libp2p/specs/tree/master/pubsub#the-message
-            // seqno field must be a 64-bit big-endian serialized unsigned integer
-            let be_bytes = bytes[..].try_into().unwrap();
-            u64::from_be_bytes(be_bytes)
-        })
+    pub fn sequence_number(&self) -> Option<Bytes> {
+        self.proto.seqno.clone()
     }
 
-    pub fn set_sequence_number(&mut self, seq_no: Option<u64>) {
-        self.proto.seqno = seq_no.map(|no| no.to_be_bytes().to_vec().into());
+    pub fn set_sequence_number(&mut self, seq_no: Option<impl Into<Vec<u8>>>) {
+        self.proto.seqno = seq_no.map(|n| n.into().into());
     }
 
     #[must_use]
