@@ -2,8 +2,8 @@ mod gen {
     include!("gen/mod.rs");
 }
 
-pub mod topic {
-    pub use super::gen::libp2p::pubsub::v1::TopicDescriptor as TopicDescriptorProto;
+pub mod topic_descriptor {
+    pub use super::gen::libp2p::topic_descriptor::v1::TopicDescriptor as TopicDescriptorProto;
 }
 
 pub mod pubsub {

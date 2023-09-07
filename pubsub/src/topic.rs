@@ -6,7 +6,7 @@ use base64::prelude::*;
 use prost::Message as _;
 use sha2::{Digest, Sha256};
 
-use pubsub_proto::topic::TopicDescriptorProto;
+use pubsub_proto::topic_descriptor::TopicDescriptorProto;
 
 pub type IdentTopic = Topic<IdentityHash>;
 pub type Sha256Topic = Topic<Sha256Hash>;

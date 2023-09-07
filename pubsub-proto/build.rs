@@ -18,8 +18,14 @@ fn main() {
     //       if they are not met.
 
     let src_dir = root_dir().join("src");
+    let src_gen_dir = root_dir().join("src/gen");
     let proto_dir = root_dir().join("proto");
     let buf_gen_yaml = root_dir().join("proto/buf.gen.yaml");
+
+    // Remove the generated code directory if it exists.
+    if src_gen_dir.exists() {
+        std::fs::remove_dir_all(&src_gen_dir).unwrap();
+    }
 
     // Run `buf generate` to generate the protobuf code. See Buf CLI's generate documentation for
     // more information: https://buf.build/docs/generate/overview
@@ -27,8 +33,6 @@ fn main() {
         .arg("generate")
         .arg("--template")
         .arg(&buf_gen_yaml)
-        .arg("--path")
-        .arg("libp2p/pubsub")
         .arg("--output")
         .arg(&src_dir)
         .current_dir(&proto_dir)
