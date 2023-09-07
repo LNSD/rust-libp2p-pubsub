@@ -48,9 +48,6 @@ pub enum MessageValidationError {
     /// The message source was invalid (invalid peer ID).
     #[error("invalid peer id")]
     InvalidPeerId,
-    /// The sequence number was the incorrect size.
-    #[error("incorrect size sequence number")]
-    InvalidSequenceNumber,
 }
 
 /// Validates a [`MessageProto`].
@@ -58,7 +55,6 @@ pub enum MessageValidationError {
 /// A message protobuf is valid if:
 /// - The `topic` is not empty.
 /// - The `from` field's peer ID, if present, is valid.
-/// - The `seqno` field, if present, is a 64-bit big-endian serialized unsigned integer.
 ///
 /// If the message is invalid, a [`MessageValidationError`] is returned.
 pub fn validate_message_proto(message: &MessageProto) -> Result<(), MessageValidationError> {
@@ -71,13 +67,6 @@ pub fn validate_message_proto(message: &MessageProto) -> Result<(), MessageValid
     if let Some(peer_id) = message.from.as_ref() {
         if PeerId::from_bytes(peer_id).is_err() {
             return Err(MessageValidationError::InvalidPeerId);
-        }
-    }
-
-    // If present, seqno field must be a 64-bit big-endian serialized unsigned integer
-    if let Some(seq_no) = message.seqno.as_ref() {
-        if seq_no.len() != 8 {
-            return Err(MessageValidationError::InvalidSequenceNumber);
         }
     }
 

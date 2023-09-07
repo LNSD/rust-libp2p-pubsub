@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::time::Duration;
 
+use bytes::Bytes;
 use rand::random;
 use sha2::{Digest, Sha256};
 
@@ -40,6 +41,11 @@ fn new_test_service_with_ttl_and_heartbeat(
 /// Create a new random test topic.
 fn new_test_topic() -> TopicHash {
     TopicHash::from_raw(format!("/pubsub/2/it-pubsub-test-{}", random::<u32>()))
+}
+
+/// Create a new random test sequence number.
+fn new_test_seqno() -> Bytes {
+    Bytes::from(random::<u32>().to_be_bytes().to_vec())
 }
 
 /// Create a test `Message` with given topic and random payload.
@@ -92,16 +98,16 @@ async fn unknown_topic_message_topic_not_added_to_cache() {
     let mut service = new_test_service();
 
     let topic = new_test_topic();
-    let message_a = {
-        let mut msg = Message::new(topic.clone(), b"test-payload".to_vec());
-        msg.set_sequence_number(Some(65));
-        msg
-    };
-    let message_b = {
-        let mut msg = Message::new(topic.clone(), b"test-payload".to_vec());
-        msg.set_sequence_number(Some(66));
-        msg
-    };
+    let message_a = Message::new_with_sequence_number(
+        topic.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
+    );
+    let message_b = Message::new_with_sequence_number(
+        topic.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
+    );
 
     //// When
     let input_events = itertools::chain!(
@@ -128,16 +134,16 @@ async fn not_seen_message_added_to_cache_with_default_message_id_fn() {
     let mut service = new_test_service();
 
     let topic = new_test_topic();
-    let message_a = {
-        let mut msg = Message::new(topic.clone(), b"test-payload".to_vec());
-        msg.set_sequence_number(Some(65));
-        msg
-    };
-    let message_b = {
-        let mut msg = Message::new(topic.clone(), b"test-payload".to_vec());
-        msg.set_sequence_number(Some(66));
-        msg
-    };
+    let message_a = Message::new_with_sequence_number(
+        topic.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
+    );
+    let message_b = Message::new_with_sequence_number(
+        topic.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
+    );
 
     // Simulate a subscription to the topic
     let input_events = new_subscription_seq(topic.clone(), None);
