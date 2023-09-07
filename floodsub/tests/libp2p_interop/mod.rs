@@ -1,2 +1,2 @@
-mod floodsub;
-mod gossipsub;
+mod libp2p_floodsub;
+mod libp2p_gossipsub;
