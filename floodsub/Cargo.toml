@@ -14,7 +14,7 @@ assert_matches.workspace = true
 common-test = { version = "0.1.0", path = "../common-test" }
 futures.workspace = true
 itertools = "0.11.0"
-libp2p = { workspace = true, features = ["gossipsub", "tokio", "yamux", "plaintext", "secp256k1", "tcp", "dns"] }
+libp2p = { workspace = true, features = ["gossipsub", "floodsub", "tokio", "yamux", "plaintext", "secp256k1", "tcp", "dns"] }
 rand = "0.8.5"
 tokio = { workspace = true, features = ["rt", "macros"] }
 tracing.workspace = true
