@@ -110,8 +110,16 @@ jobs:
         with:
           input: pubsub-proto/proto
 
-      # Perform breaking change detection against the `main` branch
+      # Perform breaking change detection against the `main` branch (pull-request)
       - uses: bufbuild/buf-breaking-action@v1
+        if: github.ref != 'refs/heads/main' && github.event_name == 'pull_request'
         with:
           input: "pubsub-proto/proto"
-          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,ref=HEAD~1,subdir=pubsub-proto/proto"
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,subdir=pubsub-proto/proto"
+
+      # Perform breaking change detection against the `main` branch
+      - uses: bufbuild/buf-breaking-action@v1
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          input: "pubsub-proto/proto"
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,subdir=pubsub-proto/proto,ref=HEAD~1"
