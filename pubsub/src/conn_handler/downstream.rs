@@ -11,6 +11,7 @@ use super::codec::Codec;
 use super::events_stream_handler::{StreamHandlerIn, StreamHandlerOut};
 use super::send_only_stream_handler::SendOnlyStreamHandler;
 
+#[allow(clippy::large_enum_variant)]
 pub enum DownstreamIn {
     /// Send bytes to the downstream.
     Send(Bytes),
@@ -18,6 +19,7 @@ pub enum DownstreamIn {
     ConnHandlerEvent(DownstreamConnHandlerInEvent),
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum DownstreamConnHandlerInEvent {
     /// The substream has been fully negotiated.
     FullyNegotiated(Framed<Stream, Codec>),
