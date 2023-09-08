@@ -4,13 +4,12 @@ use assert_matches::assert_matches;
 use libp2p::identity::PeerId;
 use rand::random;
 
-use common_test as testlib;
-use common_test::service::noop_context;
-use pubsub::protocol::{
+use libp2p_pubsub_core::protocol::{
     ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent,
 };
-use pubsub::{FrameMessage, TopicHash};
+use libp2p_pubsub_core::{FrameMessage, TopicHash};
+use testlib::service::noop_context;
 
 use super::Router;
 

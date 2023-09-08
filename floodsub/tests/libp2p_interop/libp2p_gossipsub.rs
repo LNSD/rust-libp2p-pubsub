@@ -19,11 +19,10 @@ use tokio::time::timeout;
 use tracing_futures::Instrument;
 use void::Void;
 
-use common_test as testlib;
-use common_test::any_memory_addr;
-use common_test::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
-use floodsub::Protocol as Floodsub;
-use pubsub::{Behaviour as PubsubBehaviour, Config, Event, IdentTopic, Message};
+use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Config, Event, IdentTopic, Message};
+use libp2p_pubsub_floodsub::Protocol as Floodsub;
+use testlib::any_memory_addr;
+use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 type Behaviour = PubsubBehaviour<Floodsub>;
 

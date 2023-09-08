@@ -1,0 +1,15 @@
+[package]
+name = "libp2p-pubsub-common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures.workspace = true
+futures-ticker = "0.0.3"
+hashlink = "0.8.4"
+instant = "0.1.12"
+
+[dev-dependencies]
+assert_matches.workspace = true
+sha2 = "0.10.7"
+tokio = { workspace = true, features = ["rt", "time", "macros"] }

@@ -1,17 +1,17 @@
 [package]
-name = "floodsub"
+name = "libp2p-pubsub-floodsub"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-common = { version = "0.1.0", path = "../common" }
 libp2p = { workspace = true, features = ["macros"] }
-pubsub = { version = "0.1.0", path = "../pubsub" }
+libp2p-pubsub-common = { version = "0.1.0", path = "../pubsub-common" }
+libp2p-pubsub-core = { version = "0.1.0", path = "../pubsub-core" }
 tracing.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
-common-test = { version = "0.1.0", path = "../common-test" }
+testlib = { version = "0.1.0", path = "../testlib" }
 futures.workspace = true
 itertools = "0.11.0"
 libp2p = { workspace = true, features = ["gossipsub", "floodsub", "tokio", "yamux", "plaintext", "secp256k1", "tcp", "dns"] }
