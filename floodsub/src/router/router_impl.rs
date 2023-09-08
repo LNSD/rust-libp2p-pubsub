@@ -10,7 +10,7 @@ use libp2p_pubsub_core::protocol::{
 use libp2p_pubsub_core::TopicHash;
 
 /// The `Router` struct is the implementation of the [`ProtocolRouter`](
-/// pubsub::protocol::ProtocolRouter) trait for the floodsub protocol.
+/// libp2p_pubsub_core::protocol::ProtocolRouter) trait for the floodsub protocol.
 #[derive(Default)]
 pub struct Router {
     /// The topics this router is subscribed to.
