@@ -14,6 +14,11 @@ fn root_dir() -> PathBuf {
 }
 
 fn main() {
+    // Run code generation only if 'proto-gen' feature is enabled.
+    if !cfg!(feature = "proto-gen") {
+        return;
+    }
+
     // TODO: Check build requirements here and print a user friendly error message
     //       if they are not met.
 

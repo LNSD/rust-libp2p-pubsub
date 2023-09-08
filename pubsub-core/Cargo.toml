@@ -21,7 +21,7 @@ sha2 = "0.10.7"
 thiserror.workspace = true
 tracing.workspace = true
 trait-set = "0.3.0"
-unsigned-varint = { version = "0.7.2", features = ["asynchronous-codec"] }
+unsigned-varint = { version = "0.7.2", features = ["asynchronous_codec"] }
 
 [dev-dependencies]
 assert_matches.workspace = true

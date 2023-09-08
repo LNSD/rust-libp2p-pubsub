@@ -6,5 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Enable to run protobuf messages code generation at compile time (requires Buf CLI, protoc, etc.).
+proto-gen = []
+
 [dependencies]
 prost = "0.12.0"
