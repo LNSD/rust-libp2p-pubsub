@@ -6,6 +6,12 @@ members = [
     "floodsub",
     "testlib",
 ]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.66.0"
+license = "Apache-2.0"
+repository = "https://github.com/LNSD/rust-libp2p-pubsub"
 
 [workspace.dependencies]
 assert_matches = "1.5.0"
