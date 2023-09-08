@@ -1191,6 +1191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libp2p-pubsub"
+version = "0.1.0"
+dependencies = [
+ "libp2p-pubsub-common",
+ "libp2p-pubsub-core",
+ "libp2p-pubsub-floodsub",
+]
+
+[[package]]
 name = "libp2p-pubsub-common"
 version = "0.1.0"
 dependencies = [

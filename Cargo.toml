@@ -5,6 +5,7 @@ members = [
     "pubsub-core",
     "floodsub",
     "testlib",
+    "meta"
 ]
 resolver = "2"
 

@@ -1,0 +1,16 @@
+[package]
+name = "libp2p-pubsub"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+floodsub = ["dep:libp2p-pubsub-floodsub"]
+all = ["floodsub"]
+
+[dependencies]
+libp2p-pubsub-common = { version = "0.1.0", path = "../pubsub-common" }
+libp2p-pubsub-core = { version = "0.1.0", path = "../pubsub-core" }
+libp2p-pubsub-floodsub = { version = "0.1.0", path = "../floodsub", optional = true }
