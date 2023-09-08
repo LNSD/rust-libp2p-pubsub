@@ -9,7 +9,7 @@ This is an alternative implementation of [rust-libp2p](https://github.com/libp2p
 > **Warning**
 > This is a work in progress and is not ready for production use.
 
-## Development requirements
+## Dev requirements
 
 To build this project you need the following:
 
@@ -32,7 +32,7 @@ The Buf CLI is used to manage the protobuf files and generate the rust code. The
 is performed by the `build.rs` script and is run automatically when building the project.
 
 > **Note**
-> If the `cargo build` command fails, check first you have all the [build requirements](#build-requirements) installed.
+> If the `cargo build` command fails, check first you have all the [dev requirements](#dev-requirements) installed.
 
 ## Supported Rust Versions
 
