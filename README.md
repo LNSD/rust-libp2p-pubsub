@@ -18,12 +18,12 @@ To build this project you need the following:
 - [Protobuf Compiler (protoc)](https://grpc.io/docs/protoc-installation/)
 - [Protoc prost plugins (protoc-gen-prost)](https://github.com/neoeinstein/protoc-gen-prost):
     ```
-    cargo install protoc-gen-prost
-    cargo install protoc-gen-prost-crate
+    cargo install protoc-gen-prost --locked
+    cargo install protoc-gen-prost-crate --locked
     ```
 - Cargo nextest (Optional):
     ```
-    cargo install cargo-nextest
+    cargo install cargo-nextest --locked
     ```
 
 ## Protocol frame format
