@@ -279,9 +279,7 @@ dependencies = [
  "futures-ticker",
  "hashlink",
  "instant",
- "libp2p",
  "sha2 0.10.7",
- "thiserror",
  "tokio",
 ]
 
@@ -1923,7 +1921,6 @@ dependencies = [
  "pubsub-proto",
  "rand 0.8.5",
  "sha2 0.10.7",
- "smallvec",
  "thiserror",
  "tokio",
  "tracing",
