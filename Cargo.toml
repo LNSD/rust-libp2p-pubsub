@@ -1,10 +1,10 @@
 [workspace]
 members = [
-    "common",
-    "common-test",
+    "pubsub-common",
     "pubsub-proto",
-    "pubsub",
+    "pubsub-core",
     "floodsub",
+    "testlib",
 ]
 
 [workspace.dependencies]

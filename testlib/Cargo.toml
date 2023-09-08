@@ -1,0 +1,16 @@
+[package]
+name = "testlib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+assert_matches.workspace = true
+futures.workspace = true
+futures-test = "0.3.28"
+hex = "0.4.3"
+libp2p = { workspace = true, features = ["secp256k1", "yamux", "plaintext"] }
+libp2p-pubsub-common = { version = "0.1.0", path = "../pubsub-common" }
+tokio = { workspace = true, features = ["macros", "time"] }
+tracing.workspace = true
+tracing-futures = "0.2.5"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

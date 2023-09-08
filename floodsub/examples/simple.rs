@@ -9,8 +9,8 @@ use libp2p::plaintext::PlainText2Config;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::{dns, tcp, yamux, Multiaddr, PeerId, Swarm, Transport};
 
-use floodsub::Protocol as Floodsub;
-use pubsub::{Behaviour, Config, IdentTopic, Message};
+use libp2p_pubsub_core::{Behaviour, Config, IdentTopic, Message};
+use libp2p_pubsub_floodsub::Protocol as Floodsub;
 
 /// Set up a DNS-enabled TCP transport over the Yamux protocol.
 fn new_dns_tcp_transport(keypair: &Keypair) -> Boxed<(PeerId, StreamMuxerBox)> {
@@ -156,7 +156,7 @@ async fn main() {
                     );
                 }
                 SwarmEvent::Behaviour(event) => match event {
-                    pubsub::Event::MessageReceived { message, .. } => {
+                    libp2p_pubsub_core::Event::MessageReceived { message, .. } => {
                         let msg_data = String::from_utf8_lossy(&message.data);
                         println!(
                             "SUBSCRIBER > Received message: {} (topic: {})",

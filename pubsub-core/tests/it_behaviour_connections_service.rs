@@ -8,10 +8,12 @@ use tokio::time::timeout;
 use tracing_futures::Instrument;
 
 use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Config};
-use libp2p_pubsub_floodsub::Protocol as Floodsub;
+use pubsub_testlib::NoopProtocol;
 use testlib::any_memory_addr;
 
-type Behaviour = PubsubBehaviour<Floodsub>;
+mod pubsub_testlib;
+
+type Behaviour = PubsubBehaviour<NoopProtocol>;
 
 fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
@@ -29,7 +31,7 @@ fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
 }
 
 #[tokio::test]
-async fn connection_is_established() {
+async fn connection_to_peer_is_tracked() {
     testlib::init_logger();
 
     //// Given
@@ -50,14 +52,14 @@ async fn connection_is_established() {
     .expect("listening to start");
 
     //// When
-    // Node B dials Node A address.
+    // Node B dial Node A address.
     testlib::swarm::should_dial_address(&mut node_b, node_a_addr);
     timeout(
         Duration::from_secs(5),
         testlib::swarm::wait_for_connection_establishment(&mut node_b, &mut node_a),
     )
     .await
-    .expect("node_b to connect to node_a");
+    .expect("Node A to connect to Node B");
 
     // Poll the swarm to make sure the connection is established.
     testlib::swarm::poll_mesh(Duration::from_millis(10), &mut node_a, &mut node_b).await;

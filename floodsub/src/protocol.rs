@@ -1,4 +1,4 @@
-use pubsub::upgrade::SimpleProtocolUpgrade;
+use libp2p_pubsub_core::upgrade::SimpleProtocolUpgrade;
 
 use crate::router::Router;
 
@@ -9,7 +9,7 @@ pub const PROTOCOL_ID: &str = "/floodsub/1.0.0";
 #[derive(Default)]
 pub struct Protocol;
 
-impl pubsub::protocol::Protocol for Protocol {
+impl libp2p_pubsub_core::protocol::Protocol for Protocol {
     type Upgrade = SimpleProtocolUpgrade<&'static str>;
     type RouterService = Router;
 

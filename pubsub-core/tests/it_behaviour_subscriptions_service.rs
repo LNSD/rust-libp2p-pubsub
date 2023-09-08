@@ -11,11 +11,13 @@ use tokio::time::timeout;
 use tracing_futures::Instrument;
 
 use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Config, IdentTopic};
-use libp2p_pubsub_floodsub::Protocol as Floodsub;
+use pubsub_testlib::NoopProtocol;
 use testlib::any_memory_addr;
 use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
-type Behaviour = PubsubBehaviour<Floodsub>;
+mod pubsub_testlib;
+
+pub type Behaviour = PubsubBehaviour<NoopProtocol>;
 
 fn new_test_topic() -> IdentTopic {
     IdentTopic::new(format!(
@@ -44,8 +46,8 @@ async fn node_should_subscribe_to_topic() {
     testlib::init_logger();
 
     //// Given
-    let topic_a = new_test_topic();
-    let topic_b = new_test_topic();
+    let pubsub_topic_a = new_test_topic();
+    let pubsub_topic_b = new_test_topic();
 
     let node_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
 
@@ -53,18 +55,18 @@ async fn node_should_subscribe_to_topic() {
 
     //// When
     node.behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node.behaviour_mut()
-        .subscribe(topic_b.clone())
+        .subscribe(pubsub_topic_b.clone())
         .expect("subscribe to topic");
 
     // Poll the node for a short period of time to allow the subscriptions to be processed.
     testlib::swarm::poll_node(Duration::from_micros(10), &mut node).await;
 
     //// Then
-    let topic_a = topic_a.hash();
-    let topic_b = topic_b.hash();
+    let topic_a = pubsub_topic_a.hash();
+    let topic_b = pubsub_topic_b.hash();
 
     let subscriptions = node.behaviour().subscriptions();
     assert_eq!(
@@ -87,9 +89,9 @@ async fn node_should_unsubscribe_from_topic() {
     testlib::init_logger();
 
     //// Given
-    let topic_a = new_test_topic();
-    let topic_b = new_test_topic();
-    let topic_c = new_test_topic();
+    let pubsub_topic_a = new_test_topic();
+    let pubsub_topic_b = new_test_topic();
+    let pubsub_topic_c = new_test_topic();
 
     let node_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
 
@@ -97,13 +99,13 @@ async fn node_should_unsubscribe_from_topic() {
 
     // Subscribe to the test topics
     node.behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node.behaviour_mut()
-        .subscribe(topic_b.clone())
+        .subscribe(pubsub_topic_b.clone())
         .expect("subscribe to topic");
     node.behaviour_mut()
-        .subscribe(topic_c.clone())
+        .subscribe(pubsub_topic_c.clone())
         .expect("subscribe to topic");
 
     // Poll the node for a short period of time to allow the subscriptions to be processed.
@@ -111,16 +113,16 @@ async fn node_should_unsubscribe_from_topic() {
 
     //// When
     node.behaviour_mut()
-        .unsubscribe(&topic_b)
+        .unsubscribe(&pubsub_topic_b)
         .expect("unsubscribe from topic");
 
     // Poll the node for a short period of time to allow the subscriptions to be processed.
     testlib::swarm::poll_node(Duration::from_micros(10), &mut node).await;
 
     //// Then
-    let topic_a = topic_a.hash();
-    let topic_b = topic_b.hash();
-    let topic_c = topic_c.hash();
+    let topic_a = pubsub_topic_a.hash();
+    let topic_b = pubsub_topic_b.hash();
+    let topic_c = pubsub_topic_c.hash();
 
     let subscriptions = node.behaviour().subscriptions();
     assert_eq!(
@@ -148,9 +150,9 @@ async fn send_subscriptions_on_connection_established() {
     testlib::init_logger();
 
     //// Given
-    let topic_a = new_test_topic();
-    let topic_b = new_test_topic();
-    let topic_c = new_test_topic();
+    let pubsub_topic_a = new_test_topic();
+    let pubsub_topic_b = new_test_topic();
+    let pubsub_topic_c = new_test_topic();
 
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
@@ -171,19 +173,19 @@ async fn send_subscriptions_on_connection_established() {
     // Subscribe to the topic
     node_a
         .behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node_a
         .behaviour_mut()
-        .subscribe(topic_b.clone())
+        .subscribe(pubsub_topic_b.clone())
         .expect("subscribe to topic");
     node_b
         .behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node_b
         .behaviour_mut()
-        .subscribe(topic_c.clone())
+        .subscribe(pubsub_topic_c.clone())
         .expect("subscribe to topic");
 
     //// When
@@ -200,9 +202,9 @@ async fn send_subscriptions_on_connection_established() {
     testlib::swarm::poll_mesh(Duration::from_millis(10), &mut node_a, &mut node_b).await;
 
     //// Then
-    let topic_a = topic_a.hash();
-    let topic_b = topic_b.hash();
-    let topic_c = topic_c.hash();
+    let topic_a = pubsub_topic_a.hash();
+    let topic_b = pubsub_topic_b.hash();
+    let topic_c = pubsub_topic_c.hash();
 
     assert_matches!(
         node_a.behaviour().peer_subscriptions(node_b.local_peer_id()),
@@ -230,7 +232,7 @@ async fn send_subscriptions_on_subscribe() {
     testlib::init_logger();
 
     //// Given
-    let topic_a = new_test_topic();
+    let pubsub_topic_a = new_test_topic();
 
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
@@ -263,14 +265,14 @@ async fn send_subscriptions_on_subscribe() {
     //// When
     node_b
         .behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
 
     // Poll the network for a short period of time to allow the subscriptions to be processed and exchanged.
     testlib::swarm::poll_mesh(Duration::from_millis(10), &mut node_a, &mut node_b).await;
 
     //// Then
-    let topic_a = topic_a.hash();
+    let topic_a = pubsub_topic_a.hash();
 
     assert_matches!(
         node_a.behaviour().peer_subscriptions(node_b.local_peer_id()),
@@ -287,9 +289,9 @@ async fn send_subscriptions_on_unsubscribe() {
     testlib::init_logger();
 
     //// Given
-    let topic_a = new_test_topic();
-    let topic_b = new_test_topic();
-    let topic_c = new_test_topic();
+    let pubsub_topic_a = new_test_topic();
+    let pubsub_topic_b = new_test_topic();
+    let pubsub_topic_c = new_test_topic();
 
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
@@ -310,19 +312,19 @@ async fn send_subscriptions_on_unsubscribe() {
     // Subscribe to the topic
     node_a
         .behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node_a
         .behaviour_mut()
-        .subscribe(topic_b.clone())
+        .subscribe(pubsub_topic_b.clone())
         .expect("subscribe to topic");
     node_b
         .behaviour_mut()
-        .subscribe(topic_a.clone())
+        .subscribe(pubsub_topic_a.clone())
         .expect("subscribe to topic");
     node_b
         .behaviour_mut()
-        .subscribe(topic_c.clone())
+        .subscribe(pubsub_topic_c.clone())
         .expect("subscribe to topic");
 
     // Dial the node_a node
@@ -340,20 +342,20 @@ async fn send_subscriptions_on_unsubscribe() {
     //// When
     node_a
         .behaviour_mut()
-        .unsubscribe(&topic_a)
+        .unsubscribe(&pubsub_topic_a)
         .expect("unsubscribe from topic");
     node_b
         .behaviour_mut()
-        .unsubscribe(&topic_a)
+        .unsubscribe(&pubsub_topic_a)
         .expect("unsubscribe from topic");
 
     // Poll the network for a short period of time to allow the subscriptions to be processed.
     testlib::swarm::poll_mesh(Duration::from_millis(10), &mut node_a, &mut node_b).await;
 
     //// Then
-    let topic_a = topic_a.hash();
-    let topic_b = topic_b.hash();
-    let topic_c = topic_c.hash();
+    let topic_a = pubsub_topic_a.hash();
+    let topic_b = pubsub_topic_b.hash();
+    let topic_c = pubsub_topic_c.hash();
 
     assert_matches!(
         node_a.behaviour().peer_subscriptions(node_b.local_peer_id()),

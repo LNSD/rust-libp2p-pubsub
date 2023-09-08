@@ -2,12 +2,12 @@ use std::collections::{BTreeSet, HashMap};
 
 use libp2p::identity::PeerId;
 
-use common::service::{OnEventCtx, Service};
-use pubsub::protocol::{
+use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_core::protocol::{
     ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent,
 };
-use pubsub::TopicHash;
+use libp2p_pubsub_core::TopicHash;
 
 /// The `Router` struct is the implementation of the [`ProtocolRouter`](
 /// pubsub::protocol::ProtocolRouter) trait for the floodsub protocol.

@@ -271,35 +271,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "futures",
- "futures-ticker",
- "hashlink",
- "instant",
- "sha2 0.10.7",
- "tokio",
-]
-
-[[package]]
-name = "common-test"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "common",
- "futures",
- "futures-test",
- "hex",
- "libp2p",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -597,24 +568,6 @@ name = "fiat-crypto"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e825f6987101665dea6ec934c09ec6d721de7bc1bf92248e1d5810c8cd636b77"
-
-[[package]]
-name = "floodsub"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "common",
- "common-test",
- "futures",
- "itertools",
- "libp2p",
- "pubsub",
- "rand 0.8.5",
- "tokio",
- "tracing",
- "tracing-futures",
- "void",
-]
 
 [[package]]
 name = "fnv"
@@ -1235,6 +1188,71 @@ dependencies = [
  "log",
  "quick-protobuf",
  "unsigned-varint",
+]
+
+[[package]]
+name = "libp2p-pubsub-common"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "futures",
+ "futures-ticker",
+ "hashlink",
+ "instant",
+ "sha2 0.10.7",
+ "tokio",
+]
+
+[[package]]
+name = "libp2p-pubsub-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_matches",
+ "asynchronous-codec",
+ "base64 0.21.3",
+ "bytes",
+ "futures",
+ "hex_fmt",
+ "itertools",
+ "libp2p",
+ "libp2p-pubsub-common",
+ "libp2p-pubsub-proto",
+ "prost",
+ "rand 0.8.5",
+ "sha2 0.10.7",
+ "testlib",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "trait-set",
+ "unsigned-varint",
+]
+
+[[package]]
+name = "libp2p-pubsub-floodsub"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "futures",
+ "itertools",
+ "libp2p",
+ "libp2p-pubsub-common",
+ "libp2p-pubsub-core",
+ "rand 0.8.5",
+ "testlib",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "void",
+]
+
+[[package]]
+name = "libp2p-pubsub-proto"
+version = "0.1.0"
+dependencies = [
+ "prost",
 ]
 
 [[package]]
@@ -1903,40 +1921,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pubsub"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_matches",
- "asynchronous-codec",
- "base64 0.21.3",
- "bytes",
- "common",
- "common-test",
- "futures",
- "hex_fmt",
- "itertools",
- "libp2p",
- "prost",
- "pubsub-proto",
- "rand 0.8.5",
- "sha2 0.10.7",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-futures",
- "trait-set",
- "unsigned-varint",
-]
-
-[[package]]
-name = "pubsub-proto"
-version = "0.1.0"
-dependencies = [
- "prost",
-]
-
-[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2471,6 +2455,22 @@ checksum = "a75fb188eb626b924683e3b95e3a48e63551fcfb51949de2f06a9d91dbee93c9"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "testlib"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "futures",
+ "futures-test",
+ "hex",
+ "libp2p",
+ "libp2p-pubsub-common",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
 ]
 
 [[package]]
