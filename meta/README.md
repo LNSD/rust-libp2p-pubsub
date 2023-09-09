@@ -1,5 +1,6 @@
 rust-libp2p-pubsub
 ---------
+[![Crates.io](https://img.shields.io/crates/v/libp2p-pubsub)](https://crates.io/crates/libp2p-pubsub)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
 [![ci](https://github.com/LNSD/rust-libp2p-pubsub/actions/workflows/ci.yml/badge.svg)](https://github.com/LNSD/rust-libp2p-pubsub/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/LNSD/rust-libp2p-pubsub/branch/main/graph/badge.svg?token=9UPTAJSD2U)](https://codecov.io/gh/LNSD/rust-libp2p-pubsub)
