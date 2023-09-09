@@ -1,6 +1,6 @@
 use std::env;
 use std::path::PathBuf;
-use std::process::{exit, Command};
+use std::process::Command;
 
 /// Return the path to root of the crate being built.
 ///
@@ -13,14 +13,69 @@ fn root_dir() -> PathBuf {
     PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
 }
 
+/// Check if all the build requirements are met.
+///
+/// This function checks if the following tools are installed:
+/// - Buf CLI
+/// - protoc
+/// - protoc-gen-prost
+/// - protoc-gen-prost-crate
+fn check_build_requirements() -> Result<(), String> {
+    let mut errors = vec![];
+
+    // Check if buf is installed.
+    let buf = Command::new("buf").arg("--version").status().unwrap();
+    if !buf.success() {
+        errors.push("Buf CLI not found. Please install buf: https://docs.buf.build/installation");
+    }
+
+    // Check if protoc is installed.
+    let protoc = Command::new("protoc").arg("--version").status().unwrap();
+    if !protoc.success() {
+        errors.push(
+            "protoc not found. Please install protoc: https://grpc.io/docs/protoc-installation/",
+        );
+    }
+
+    // Check if protoc-gen-prost is installed.
+    let protoc_gen_prost = Command::new("protoc-gen-prost")
+        .arg("--version")
+        .status()
+        .unwrap();
+    if !protoc_gen_prost.success() {
+        errors.push("protoc-gen-prost not found. Please install protoc-gen-prost: cargo install protoc-gen-prost --locked");
+    }
+
+    // Check if protoc-gen-prost-crate is installed.
+    let protoc_gen_prost_crate = Command::new("protoc-gen-prost-crate")
+        .arg("--version")
+        .status()
+        .unwrap();
+    if !protoc_gen_prost_crate.success() {
+        errors.push("protoc-gen-prost-crate not found. Please install protoc-gen-prost-crate: cargo install protoc-gen-prost-crate --locked");
+    }
+
+    if !errors.is_empty() {
+        return Err(format!(
+            "Build requirements not met:\n - {}",
+            errors.join("\n - ")
+        ));
+    }
+
+    Ok(())
+}
+
 fn main() {
     // Run code generation only if 'proto-gen' feature is enabled.
-    if !cfg!(feature = "proto-gen") {
+    if env::var("CARGO_FEATURE_PROTO_GEN").is_err() {
+        println!("Skipping code generation. 'proto-gen' feature is not enabled.");
         return;
     }
 
-    // TODO: Check build requirements here and print a user friendly error message
-    //       if they are not met.
+    // Check if all the build requirements are met.
+    if let Err(err) = check_build_requirements() {
+        panic!("{}", err);
+    }
 
     let src_dir = root_dir().join("src");
     let src_gen_dir = root_dir().join("src/gen");
@@ -45,8 +100,7 @@ fn main() {
         .unwrap();
 
     if !status.success() {
-        eprintln!("Protobuf code generation failed: {}", status);
-        exit(status.code().unwrap_or(1))
+        panic!("Protobuf code generation failed: {}", status);
     }
 
     // Re-run this build script if any of the proto files have changed.
