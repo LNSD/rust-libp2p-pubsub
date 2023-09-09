@@ -1,10 +1,13 @@
 [package]
 name = "libp2p-pubsub-proto"
+description = "Protocol Buffers definitions for the rust-libp2p pubsub protocols."
 version = "0.1.0"
 edition = "2021"
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+exclude.workspace = true
+readme = "../meta/README.md"
 
 [features]
 # Enable to run protobuf messages code generation at compile time (requires Buf CLI, protoc, etc.).

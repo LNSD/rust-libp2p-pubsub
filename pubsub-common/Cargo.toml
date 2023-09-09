@@ -1,10 +1,13 @@
 [package]
 name = "libp2p-pubsub-common"
+description = "Common utilities and traits for rust-libp2p pubsub protocols."
 version = "0.1.0"
 edition = "2021"
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+exclude.workspace = true
+readme = "../meta/README.md"
 
 [dependencies]
 futures.workspace = true
