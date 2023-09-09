@@ -1,10 +1,13 @@
 [package]
 name = "libp2p-pubsub-floodsub"
+description = "An alternative implementation of the floodsub protocol for the rust-libp2p stack."
 version = "0.1.0"
 edition = "2021"
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+exclude.workspace = true
+readme = "../meta/README.md"
 
 [dependencies]
 libp2p = { workspace = true, features = ["macros"] }

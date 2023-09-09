@@ -1,10 +1,12 @@
 [package]
 name = "testlib"
+description = "Test utilities and helpers functions for testing rust-libp2p pubsub protocols"
 version = "0.1.0"
 edition = "2021"
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+exclude.workspace = true
 
 [dependencies]
 assert_matches.workspace = true
