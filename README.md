@@ -10,30 +10,10 @@ This is an alternative implementation of [rust-libp2p](https://github.com/libp2p
 > **Warning**
 > This is a work in progress and is not ready for production use.
 
-## Dev requirements
-
-To build this project you need the following:
-
-- Rust toolchain (1.66+)
-- [Buf CLI](https://docs.buf.build/installation)
-- [Protobuf Compiler (protoc)](https://grpc.io/docs/protoc-installation/)
-- [Protoc prost plugins (protoc-gen-prost)](https://github.com/neoeinstein/protoc-gen-prost):
-    ```
-    cargo install protoc-gen-prost --locked
-    cargo install protoc-gen-prost-crate --locked
-    ```
-- Cargo nextest (Optional):
-    ```
-    cargo install cargo-nextest --locked
-    ```
-
 ## Protocol frame format
 
 The Buf CLI is used to manage the protobuf files and generate the rust code. The code generation
 is performed by the `build.rs` script and is run automatically when building the project.
-
-> **Note**
-> If the `cargo build` command fails, check first you have all the [dev requirements](#dev-requirements) installed.
 
 ## Supported Rust Versions
 
@@ -47,6 +27,10 @@ it will always be supported. For example, if the current stable compiler version
 is 1.69, the minimum supported version will not be increased past 1.66, three minor
 versions prior. Increasing the minimum supported compiler version is not considered
 a semantic versioning breaking change as long as doing so complies with this policy.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more information about contributing to this project.
 
 ## License
 
