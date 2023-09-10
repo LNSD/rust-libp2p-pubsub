@@ -6,7 +6,7 @@ use tokio::time::timeout;
 use testlib::any_memory_addr;
 use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
-use crate::floodsub::flood_testlib::*;
+use testlib::test_factory::*;
 
 #[tokio::test]
 async fn node_should_subscribe_to_topic() {

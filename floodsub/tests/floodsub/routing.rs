@@ -12,7 +12,7 @@ use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 type Behaviour = PubsubBehaviour<Floodsub>;
 
-use crate::floodsub::flood_testlib::*;
+use testlib::test_factory::*;
 
 /// Subscribe to a topic and assert that the subscription is successful.
 #[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]

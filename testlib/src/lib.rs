@@ -7,6 +7,7 @@ pub use transport::*;
 pub mod keys;
 pub mod service;
 pub mod swarm;
+pub mod test_factory;
 pub mod transport;
 
 /// Initialize the logger for tests.
