@@ -167,6 +167,7 @@ This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE
 - [Rust Documentation](https://doc.rust-lang.org/)
 - [Cargo Documentation](https://doc.rust-lang.org/cargo/)
 
+<hr>
 Thank you for your interest in contributing to our Rust open source project. We look forward to collaborating with you 
 and building a better project together!
 
