@@ -2,17 +2,17 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use bytes::Bytes;
+use libp2p::PeerId;
 use rand::random;
 use sha2::{Digest, Sha256};
 
 use libp2p_pubsub_common::service::BufferedContext;
-use testlib;
 
 use crate::framing::Message;
-use crate::message_id::{MessageId, MessageIdFn};
+use crate::message_id::MessageId;
 use crate::topic::TopicHash;
 
-use super::events::{ServiceIn as MessageCacheInEvent, SubscriptionEvent};
+use super::events::{MessageEvent, ServiceIn as MessageCacheInEvent};
 use super::service::MessageCacheService;
 
 // Create a test instance of the `MessageCacheService`.
@@ -48,6 +48,11 @@ fn new_test_seqno() -> Bytes {
     Bytes::from(random::<u32>().to_be_bytes().to_vec())
 }
 
+/// Create a new random 256 bits test message ID.
+fn new_test_message_id() -> MessageId {
+    MessageId::new(random::<[u8; 32]>().to_vec())
+}
+
 /// Create a test `Message` with given topic and random payload.
 fn new_test_message(topic: TopicHash) -> Message {
     let payload = format!("test-payload-{}", random::<u32>());
@@ -55,227 +60,120 @@ fn new_test_message(topic: TopicHash) -> Message {
 }
 
 /// A custom `MessageIdFn` that returns the message payload as the message ID.
-fn custom_message_id(msg: &Message) -> MessageId {
+fn custom_message_id_fn(msg: &Message) -> MessageId {
     let mut hasher = Sha256::new();
     hasher.update(msg.topic_str());
     hasher.update(msg.data());
     MessageId::new(hasher.finalize().to_vec())
 }
 
-/// Create a topic configuration event sequence.
-fn new_subscription_seq(
-    topic: TopicHash,
-    id_fn: Option<Rc<MessageIdFn>>,
+/// Create a message received event sequence.
+///
+/// The propagation node source is set to a random peer ID.
+fn new_message_received_seq(
+    message: Message,
+    message_id: MessageId,
 ) -> impl IntoIterator<Item = MessageCacheInEvent> {
-    [MessageCacheInEvent::SubscriptionEvent(
-        SubscriptionEvent::Subscribed {
-            topic,
-            message_id_fn: id_fn,
+    [MessageCacheInEvent::MessageEvent(
+        MessageEvent::MessageReceived {
+            src: PeerId::random(),
+            message: Rc::new(message),
+            message_id,
         },
     )]
 }
 
-/// Create an unsubscription event sequence.
-fn new_unsubscription_seq(topic: TopicHash) -> impl IntoIterator<Item = MessageCacheInEvent> {
-    [MessageCacheInEvent::SubscriptionEvent(
-        SubscriptionEvent::Unsubscribed(topic),
+/// Create a message published event sequence.
+fn new_message_published_seq(
+    message: Message,
+    message_id: MessageId,
+) -> impl IntoIterator<Item = MessageCacheInEvent> {
+    [MessageCacheInEvent::MessageEvent(
+        MessageEvent::MessagePublished {
+            message: Rc::new(message),
+            message_id,
+        },
     )]
 }
 
-/// Create a message received event sequence.
-fn new_message_received_seq(message: Message) -> impl IntoIterator<Item = MessageCacheInEvent> {
-    [MessageCacheInEvent::MessageReceived(Rc::new(message))]
-}
-
-/// Create a message published event sequence.
-fn new_message_published_seq(message: Message) -> impl IntoIterator<Item = MessageCacheInEvent> {
-    [MessageCacheInEvent::MessagePublished(Rc::new(message))]
-}
-
 #[tokio::test]
-async fn unknown_topic_message_topic_not_added_to_cache() {
-    //// Given
-    let mut service = new_test_service();
-
-    let topic = new_test_topic();
-    let message_a = Message::new_with_sequence_number(
-        topic.clone(),
-        b"test-payload".to_vec(),
-        new_test_seqno(),
-    );
-    let message_b = Message::new_with_sequence_number(
-        topic.clone(),
-        b"test-payload".to_vec(),
-        new_test_seqno(),
-    );
-
-    //// When
-    let input_events = itertools::chain!(
-        new_message_received_seq(message_a.clone()),
-        new_message_received_seq(message_b.clone())
-    );
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// Then
-    assert!(
-        !service.contains(&message_a),
-        "Cache should not contain message A"
-    );
-    assert!(
-        !service.contains(&message_b),
-        "Cache should not contain message B"
-    );
-}
-
-#[tokio::test]
-async fn not_seen_message_added_to_cache_with_default_message_id_fn() {
-    //// Given
-    let mut service = new_test_service();
-
-    let topic = new_test_topic();
-    let message_a = Message::new_with_sequence_number(
-        topic.clone(),
-        b"test-payload".to_vec(),
-        new_test_seqno(),
-    );
-    let message_b = Message::new_with_sequence_number(
-        topic.clone(),
-        b"test-payload".to_vec(),
-        new_test_seqno(),
-    );
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), None);
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// When
-    let input_events = itertools::chain!(
-        new_message_received_seq(message_a.clone()),
-        new_message_received_seq(message_b.clone())
-    );
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// Then
-    assert!(
-        service.contains(&message_a),
-        "Cache should contain message A"
-    );
-    assert!(
-        service.contains(&message_b),
-        "Cache should contain message B"
-    );
-}
-
-#[tokio::test]
-async fn not_seen_received_message_is_added_to_cache() {
+async fn not_seen_message_is_added_to_cache() {
     //// Given
     let mut service = new_test_service();
 
     let topic_a = new_test_topic();
     let topic_b = new_test_topic();
-    let message_a = new_test_message(topic_a.clone());
-    let message_b = new_test_message(topic_b.clone());
 
-    // Simulate a subscription to the topics
-    let input_events = itertools::chain!(
-        new_subscription_seq(topic_a.clone(), Some(Rc::new(custom_message_id))),
-        new_subscription_seq(topic_b.clone(), Some(Rc::new(custom_message_id)))
+    let message_a = Message::new_with_sequence_number(
+        topic_a.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
     );
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
+    let message_b = Message::new_with_sequence_number(
+        topic_b.clone(),
+        b"test-payload".to_vec(),
+        new_test_seqno(),
+    );
+
+    let message_a_id = custom_message_id_fn(&message_a);
+    let message_b_id = custom_message_id_fn(&message_b);
+    let unknown_message_id = new_test_message_id();
 
     //// When
     let input_events = itertools::chain!(
-        new_message_received_seq(message_a.clone()),
-        new_message_received_seq(message_b.clone())
+        new_message_received_seq(message_a.clone(), message_a_id.clone()),
+        new_message_published_seq(message_b.clone(), message_b_id.clone()),
     );
     testlib::service::inject_events(&mut service, input_events);
     testlib::service::async_poll(&mut service).await;
 
     //// Then
     assert!(
-        service.contains(&message_a),
-        "Cache should contain message A"
-    );
-    assert!(
-        service.contains(&message_b),
-        "Cache should contain message B"
-    );
-}
-
-#[tokio::test]
-async fn not_seen_published_message_is_added_to_cache() {
-    //// Given
-    let mut service = new_test_service();
-
-    let topic = new_test_topic();
-    let message_a = new_test_message(topic.clone());
-    let message_b = new_test_message(topic.clone());
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), Some(Rc::new(custom_message_id)));
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// When
-    let input_events = itertools::chain!(
-        new_message_published_seq(message_a.clone()),
-        new_message_published_seq(message_b.clone())
-    );
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// Then
-    assert!(
-        service.contains(&message_a),
-        "Cache should contain message A"
-    );
-    assert!(
-        service.contains(&message_b),
-        "Cache should contain message B"
-    );
-}
-
-#[tokio::test]
-async fn when_unsubscribed_topic_messages_should_not_be_added_to_cache() {
-    //// Given
-    let mut service = new_test_service();
-
-    let topic = new_test_topic();
-    let message_a = new_test_message(topic.clone());
-    let message_b = new_test_message(topic.clone());
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), Some(Rc::new(custom_message_id)));
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// When
-    // Simulate an unsubscription from the topic
-    let input_events = new_unsubscription_seq(topic.clone());
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    // Simulate a message received event
-    let input_events = itertools::chain!(
-        new_message_received_seq(message_a.clone()),
-        new_message_received_seq(message_b.clone())
-    );
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
-
-    //// Then
-    assert!(
-        !service.contains(&message_a),
+        service.contains(&message_a_id),
         "Cache should not contain message A"
     );
     assert!(
-        !service.contains(&message_b),
+        service.contains(&message_b_id),
         "Cache should not contain message B"
     );
+    assert!(
+        !service.contains(&unknown_message_id),
+        "Cache should not contain an unknown message id"
+    );
+}
+
+#[tokio::test]
+async fn seen_message_should_not_be_added_to_cache() {
+    //// Given
+    let mut service = new_test_service();
+
+    let topic = new_test_topic();
+    let message_a = new_test_message(topic.clone());
+    let message_a_id = custom_message_id_fn(&message_a);
+    let message_b = new_test_message(topic.clone());
+    let message_b_id = custom_message_id_fn(&message_b);
+
+    //// When
+    // Simulate the messages reception
+    let input_events = itertools::chain!(
+        new_message_received_seq(message_a.clone(), message_a_id.clone()),
+        new_message_published_seq(message_a.clone(), message_a_id.clone()),
+        new_message_received_seq(message_b.clone(), message_b_id.clone()),
+        new_message_received_seq(message_a.clone(), message_a_id.clone()),
+    );
+    testlib::service::inject_events(&mut service, input_events);
+    testlib::service::async_poll(&mut service).await;
+
+    //// Then
+    assert!(
+        service.contains(&message_a_id),
+        "Cache should contain message A"
+    );
+    assert!(
+        service.contains(&message_b_id),
+        "Cache should contain message B"
+    );
+    assert_eq!(service.usage(), 2, "Cache should contain 2 messages");
 }
 
 /// Test that a message is contained in the cache after TTL expires. THe heartbeat interval is
@@ -288,15 +186,11 @@ async fn seen_message_should_not_be_contained_after_ttl() {
 
     let topic = new_test_topic();
     let message = new_test_message(topic.clone());
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), Some(Rc::new(custom_message_id)));
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
+    let message_id = custom_message_id_fn(&message);
 
     //// When
     // Simulate a message received event
-    let input_events = new_message_received_seq(message.clone());
+    let input_events = new_message_received_seq(message.clone(), message_id.clone());
     testlib::service::inject_events(&mut service, input_events);
     testlib::service::async_poll(&mut service).await;
 
@@ -305,7 +199,7 @@ async fn seen_message_should_not_be_contained_after_ttl() {
 
     //// Then
     assert!(
-        !service.contains(&message),
+        !service.contains(&message_id),
         "Cache should not contain message"
     );
 }
@@ -320,15 +214,11 @@ async fn seen_message_timestamp_is_updated() {
 
     let topic = new_test_topic();
     let message = new_test_message(topic.clone());
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), Some(Rc::new(custom_message_id)));
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
+    let message_id = custom_message_id_fn(&message);
 
     //// When
     // Simulate a message received event
-    let input_events = new_message_received_seq(message.clone());
+    let input_events = new_message_received_seq(message.clone(), message_id.clone());
     testlib::service::inject_events(&mut service, input_events);
     testlib::service::async_poll(&mut service).await;
 
@@ -337,12 +227,15 @@ async fn seen_message_timestamp_is_updated() {
 
     // Simulate a message received event
     // This should update the cached message timestamp
-    let input_events = new_message_received_seq(message.clone());
+    let input_events = new_message_received_seq(message.clone(), message_id.clone());
     testlib::service::inject_events(&mut service, input_events);
     testlib::service::async_poll(&mut service).await;
 
     //// Then
-    assert!(service.contains(&message), "Cache should contain message");
+    assert!(
+        service.contains(&message_id),
+        "Cache should contain message"
+    );
 }
 
 /// Test that a message is not contained in the cache after the heartbeat interval. The cache
@@ -357,15 +250,11 @@ async fn seen_message_should_not_be_contained_after_heartbeat() {
 
     let topic = new_test_topic();
     let message = new_test_message(topic.clone());
-
-    // Simulate a subscription to the topic
-    let input_events = new_subscription_seq(topic.clone(), Some(Rc::new(custom_message_id)));
-    testlib::service::inject_events(&mut service, input_events);
-    testlib::service::async_poll(&mut service).await;
+    let message_id = custom_message_id_fn(&message);
 
     //// When
     // Simulate a message received event
-    let input_events = new_message_received_seq(message.clone());
+    let input_events = new_message_received_seq(message.clone(), custom_message_id_fn(&message));
     testlib::service::inject_events(&mut service, input_events);
     testlib::service::async_poll(&mut service).await;
 
@@ -375,7 +264,7 @@ async fn seen_message_should_not_be_contained_after_heartbeat() {
 
     //// Then
     assert!(
-        !service.contains(&message),
+        !service.contains(&message_id),
         "Cache should not contain message"
     );
 }

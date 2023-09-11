@@ -33,7 +33,11 @@ use crate::services::framing::{
     FramingServiceContext, FramingUpstreamInEvent, FramingUpstreamOutEvent,
 };
 use crate::services::message_cache::{
-    MessageCacheInEvent, MessageCacheService, MessageCacheSubscriptionEvent,
+    MessageCacheInEvent, MessageCacheMessageEvent, MessageCacheService,
+};
+use crate::services::message_id::{
+    MessageIdInEvent, MessageIdMessageEvent, MessageIdOutEvent, MessageIdService,
+    MessageIdSubscriptionEvent,
 };
 use crate::services::subscriptions::{
     SubscriptionsInEvent, SubscriptionsOutEvent, SubscriptionsPeerConnectionEvent,
@@ -51,6 +55,9 @@ pub struct Behaviour<P: Protocol> {
 
     /// Peer subscriptions tracking and management service.
     subscriptions_service: BufferedContext<SubscriptionsService>,
+
+    /// Message ID service.
+    message_id_service: BufferedContext<MessageIdService>,
 
     /// Message cache and deduplication service.
     message_cache_service: BufferedContext<MessageCacheService>,
@@ -89,6 +96,7 @@ impl<P: Protocol> Behaviour<P> {
             config,
             connections_service: Default::default(),
             subscriptions_service: Default::default(),
+            message_id_service: Default::default(),
             message_cache_service,
             protocol_router_service,
             framing_service: Default::default(),
@@ -170,20 +178,11 @@ impl<P: Protocol> Behaviour<P> {
 
         let message = FrameMessage::from(message);
 
-        // Check if message was already published.
-        if self.message_cache_service.contains(&message) {
-            return Err(anyhow::anyhow!("Message already published"));
-        }
-
-        let message = Rc::new(message);
-
-        // Notify the message cache service to add the message to the message cache.
-        self.message_cache_service
-            .do_send(MessageCacheInEvent::MessagePublished(message.clone()));
-
-        // Emit a message published event to the protocol service.
-        self.protocol_router_service
-            .do_send(ProtocolRouterInEvent::MessagePublished(message));
+        // Notify the message id service of the published message.
+        self.message_id_service
+            .do_send(MessageIdInEvent::MessageEvent(
+                MessageIdMessageEvent::Published(Rc::new(message)),
+            ));
 
         Ok(())
     }
@@ -342,10 +341,10 @@ where
         while let Poll::Ready(sub_event) = self.subscriptions_service.poll(cx) {
             match sub_event {
                 SubscriptionsOutEvent::Subscribed(sub) => {
-                    // Notify the message cache service of the subscription.
-                    self.message_cache_service
-                        .do_send(MessageCacheInEvent::SubscriptionEvent(
-                            MessageCacheSubscriptionEvent::Subscribed {
+                    // Notify the message id service of the subscription.
+                    self.message_id_service
+                        .do_send(MessageIdInEvent::SubscriptionEvent(
+                            MessageIdSubscriptionEvent::Subscribed {
                                 topic: sub.topic.clone(),
                                 message_id_fn: sub.message_id_fn.clone(),
                             },
@@ -372,10 +371,10 @@ where
                     }
                 }
                 SubscriptionsOutEvent::Unsubscribed(topic) => {
-                    // Notify the message cache service of the unsubscription.
-                    self.message_cache_service
-                        .do_send(MessageCacheInEvent::SubscriptionEvent(
-                            MessageCacheSubscriptionEvent::Unsubscribed(topic.clone()),
+                    // Notify the message id service of the unsubscription.
+                    self.message_id_service
+                        .do_send(MessageIdInEvent::SubscriptionEvent(
+                            MessageIdSubscriptionEvent::Unsubscribed(topic.clone()),
                         ));
 
                     // Notify the protocol's service of the unsubscription event.
@@ -431,6 +430,68 @@ where
             }
         }
 
+        // Poll the message id service.
+        while let Poll::Ready(event) = self.message_id_service.poll(cx) {
+            match event {
+                MessageIdOutEvent::MessagePublished {
+                    message,
+                    message_id,
+                } => {
+                    // If message has already seen before, drop it.
+                    if self.message_cache_service.contains(&message_id) {
+                        continue;
+                    }
+
+                    // Notify the message cache service of the published message.
+                    self.message_cache_service
+                        .do_send(MessageCacheInEvent::MessageEvent(
+                            MessageCacheMessageEvent::MessagePublished {
+                                message: message.clone(),
+                                message_id: message_id.clone(),
+                            },
+                        ));
+
+                    // Notify the protocol's service of the published message.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::MessagePublished(message.clone()));
+                }
+                MessageIdOutEvent::MessageReceived {
+                    src,
+                    message,
+                    message_id,
+                } => {
+                    // If message has already seen before, drop it.
+                    if self.message_cache_service.contains(&message_id) {
+                        continue;
+                    }
+
+                    // Notify the message cache service of the received message.
+                    self.message_cache_service
+                        .do_send(MessageCacheInEvent::MessageEvent(
+                            MessageCacheMessageEvent::MessageReceived {
+                                src,
+                                message: message.clone(),
+                                message_id: message_id.clone(),
+                            },
+                        ));
+
+                    // Notify the behaviour output mailbox of the received message.
+                    self.behaviour_output_mailbox
+                        .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
+                            src,
+                            message: (*message).clone().into(),
+                        }));
+
+                    // Notify the protocol's service of the received message.
+                    self.protocol_router_service
+                        .do_send(ProtocolRouterInEvent::MessageReceived {
+                            src,
+                            message: message.clone(),
+                        });
+                }
+            }
+        }
+
         // Poll the message cache service.
         let _ = self.message_cache_service.poll(cx);
 
@@ -463,28 +524,16 @@ where
                 }
                 FramingOutEvent::Upstream(ev) => match ev {
                     FramingUpstreamOutEvent::MessageReceived { src, message } => {
-                        // Skip the message if we are not subscribed to the topic or the message
-                        // was already received.
-                        if !self.subscriptions_service.is_subscribed(&message.topic())
-                            || self.message_cache_service.contains(&message)
-                        {
+                        // Skip the message if we are not subscribed to the topic.
+                        if !self.subscriptions_service.is_subscribed(&message.topic()) {
                             continue;
                         }
 
-                        // Notify the message cache service of the received message.
-                        self.message_cache_service
-                            .do_send(MessageCacheInEvent::MessageReceived(message.clone()));
-
-                        // Notify the behaviour output mailbox of the received message.
-                        self.behaviour_output_mailbox
-                            .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
-                                src,
-                                message: (*message).clone().into(),
-                            }));
-
-                        // Notify the protocol's routing service of the received message.
-                        self.protocol_router_service
-                            .do_send(ProtocolRouterInEvent::MessageReceived { src, message });
+                        // Notify the message id service of the received message.
+                        self.message_id_service
+                            .do_send(MessageIdInEvent::MessageEvent(
+                                MessageIdMessageEvent::Received { src, message },
+                            ));
                     }
                     FramingUpstreamOutEvent::SubscriptionRequestReceived { src, action } => {
                         match &action {

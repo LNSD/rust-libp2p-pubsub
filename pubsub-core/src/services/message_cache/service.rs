@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-use std::rc::Rc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -9,11 +7,10 @@ use libp2p_pubsub_common::heartbeat::Heartbeat;
 use libp2p_pubsub_common::service::{PollCtx, Service};
 use libp2p_pubsub_common::ttl_cache::Cache;
 
-use crate::framing::Message;
-use crate::message_id::{default_message_id_fn, MessageId, MessageIdFn};
-use crate::topic::TopicHash;
+use crate::message_id::MessageId;
+use crate::services::message_cache::events::MessageEvent;
 
-use super::events::{ServiceIn, SubscriptionEvent};
+use super::events::ServiceIn;
 
 pub struct MessageCacheService {
     /// The internal cache data structure.
@@ -25,9 +22,6 @@ pub struct MessageCacheService {
     /// NOTE: For now, this cache is use as "seen cache" to deduplicate messages. We do not store
     /// the message itself.
     cache: Cache<MessageId, ()>,
-
-    /// A table mapping the Topic with the `MessageID` function.
-    message_id_fn: HashMap<TopicHash, Rc<MessageIdFn>>,
 
     /// The service's heartbeat.
     heartbeat: Heartbeat,
@@ -44,22 +38,21 @@ impl MessageCacheService {
     ) -> Self {
         Self {
             cache: Cache::with_capacity_and_ttl(capacity, ttl),
-            message_id_fn: HashMap::new(),
             heartbeat: Heartbeat::new(heartbeat_interval, heartbeat_initial_delay),
         }
     }
 
     /// Check if the cache contains the given `Message`.
-    pub fn contains(&self, message: &Message) -> bool {
-        let msg_id = match self.message_id_fn.get(&message.topic()) {
-            None => {
-                // Unknown topic
-                return false;
-            }
-            Some(id_fn) => id_fn(message),
-        };
+    pub fn contains(&self, message_id: &MessageId) -> bool {
+        self.cache.contains_key(message_id)
+    }
 
-        self.cache.contains_key(&msg_id)
+    /// Get the cache usage.
+    ///
+    /// This is the number of messages currently in the cache.
+    #[cfg(test)]
+    pub fn usage(&self) -> usize {
+        self.cache.len()
     }
 }
 
@@ -79,34 +72,16 @@ impl Service for MessageCacheService {
             self.cache.clear_expired_entries();
         }
 
-        // Process all the service input mailbox events.
+        // Process the incoming events.
         while let Some(ev) = in_cx.pop_next() {
             match ev {
-                ServiceIn::SubscriptionEvent(sub_ev) => match sub_ev {
-                    SubscriptionEvent::Subscribed {
-                        message_id_fn,
-                        topic,
-                    } => {
-                        // Register the topic's message id function
-                        let message_id_fn = message_id_fn.unwrap_or(Rc::new(default_message_id_fn));
-                        self.message_id_fn.insert(topic, message_id_fn);
-                    }
-                    SubscriptionEvent::Unsubscribed(topic) => {
-                        // Unregister the topic's message id function
-                        self.message_id_fn.remove(&topic);
-                    }
-                },
-                ServiceIn::MessageReceived(message) | ServiceIn::MessagePublished(message) => {
-                    let msg_id = match self.message_id_fn.get(&message.topic()) {
-                        None => {
-                            // Unknown topic
-                            continue;
-                        }
-                        Some(id_fn) => id_fn(&message),
-                    };
-
-                    // Insert message in cache
-                    self.cache.put(msg_id, ());
+                ServiceIn::MessageEvent(MessageEvent::MessageReceived { message_id, .. }) => {
+                    // Insert message into the cache
+                    self.cache.put(message_id, ());
+                }
+                ServiceIn::MessageEvent(MessageEvent::MessagePublished { message_id, .. }) => {
+                    // Insert message into the cache
+                    self.cache.put(message_id, ());
                 }
             }
         }

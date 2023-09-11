@@ -60,9 +60,13 @@ declare_message_id_type!(MessageId);
 
 pub type MessageIdFn = dyn Fn(&FrameMessage) -> MessageId + Send + Sync + 'static;
 
+/// The default message id function as defined in the libp2p pusub spec.
+///
+/// The default message id is computed as: source + sequence number.
+///
+/// NOTE: If either the `peer_id` or `source` is not provided, we set it to 0.
 pub fn default_message_id_fn(msg: &FrameMessage) -> MessageId {
-    // default message id is: source + sequence number
-    // NOTE: If either the peer_id or source is not provided, we set to 0;
+    // If either the peer_id or source is not provided, we set to 0
     let mut source_string = if let Some(peer_id) = msg.source().as_ref() {
         peer_id.to_base58().into_bytes()
     } else {

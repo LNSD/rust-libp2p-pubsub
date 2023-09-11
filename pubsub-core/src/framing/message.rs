@@ -40,6 +40,18 @@ impl Message {
     }
 
     #[must_use]
+    pub fn new_with_seq_no_and_source(
+        topic: impl Into<TopicHash>,
+        data: impl Into<Vec<u8>>,
+        seq_no: impl Into<Vec<u8>>,
+        source: PeerId,
+    ) -> Self {
+        let mut rpc = Self::new_with_sequence_number(topic, data, seq_no);
+        rpc.set_source(Some(source));
+        rpc
+    }
+
+    #[must_use]
     pub fn into_proto(self) -> MessageProto {
         self.proto
     }
