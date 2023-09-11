@@ -5,8 +5,8 @@ use libp2p::identity::PeerId;
 use rand::random;
 
 use libp2p_pubsub_core::protocol::{
-    ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
-    ProtocolRouterSubscriptionEvent,
+    ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterMessageEvent,
+    ProtocolRouterOutEvent, ProtocolRouterSubscriptionEvent,
 };
 use libp2p_pubsub_core::{FrameMessage, MessageId, TopicHash};
 use testlib::service::noop_context;
@@ -38,19 +38,23 @@ fn new_received_message_seq(
     src: PeerId,
     topic: TopicHash,
 ) -> impl IntoIterator<Item = ProtocolRouterInEvent> {
-    [ProtocolRouterInEvent::MessageReceived {
-        src,
-        message: Rc::new(new_test_message(topic)),
-        message_id: new_test_message_id(),
-    }]
+    [ProtocolRouterInEvent::MessageEvent(
+        ProtocolRouterMessageEvent::MessageReceived {
+            src,
+            message: Rc::new(new_test_message(topic)),
+            message_id: new_test_message_id(),
+        },
+    )]
 }
 
 /// Create a new message published sequence for the given topic.
 fn new_published_message_seq(topic: TopicHash) -> impl IntoIterator<Item = ProtocolRouterInEvent> {
-    [ProtocolRouterInEvent::MessagePublished {
-        message: Rc::new(new_test_message(topic)),
-        message_id: new_test_message_id(),
-    }]
+    [ProtocolRouterInEvent::MessageEvent(
+        ProtocolRouterMessageEvent::MessagePublished {
+            message: Rc::new(new_test_message(topic)),
+            message_id: new_test_message_id(),
+        },
+    )]
 }
 
 /// Create a new subscription sequence for the given topic.

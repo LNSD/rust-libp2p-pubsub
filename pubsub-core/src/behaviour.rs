@@ -22,8 +22,8 @@ use crate::event::Event;
 use crate::framing::{Message as FrameMessage, SubscriptionAction};
 use crate::message::Message;
 use crate::protocol::{
-    Protocol, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
-    ProtocolRouterSubscriptionEvent,
+    Protocol, ProtocolRouterConnectionEvent, ProtocolRouterControlEvent, ProtocolRouterInEvent,
+    ProtocolRouterMessageEvent, ProtocolRouterOutEvent, ProtocolRouterSubscriptionEvent,
 };
 use crate::services::connections::{
     ConnectionsInEvent, ConnectionsOutEvent, ConnectionsService, ConnectionsSwarmEvent,
@@ -455,10 +455,12 @@ where
 
                     // Notify the protocol's service of the published message.
                     self.protocol_router_service
-                        .do_send(ProtocolRouterInEvent::MessagePublished {
-                            message,
-                            message_id,
-                        });
+                        .do_send(ProtocolRouterInEvent::MessageEvent(
+                            ProtocolRouterMessageEvent::MessagePublished {
+                                message,
+                                message_id,
+                            },
+                        ));
                 }
                 MessageIdOutEvent::MessageReceived {
                     src,
@@ -490,11 +492,13 @@ where
 
                     // Notify the protocol's service of the received message.
                     self.protocol_router_service
-                        .do_send(ProtocolRouterInEvent::MessageReceived {
-                            src,
-                            message,
-                            message_id,
-                        });
+                        .do_send(ProtocolRouterInEvent::MessageEvent(
+                            ProtocolRouterMessageEvent::MessageReceived {
+                                src,
+                                message,
+                                message_id,
+                            },
+                        ));
                 }
             }
         }
@@ -515,6 +519,12 @@ where
                             },
                         ));
                     }
+                }
+                ProtocolRouterOutEvent::SendControlMessage { message, dest } => {
+                    // Notify the framing service of the control message to send.
+                    self.framing_service.do_send(FramingInEvent::Downstream(
+                        FramingDownstreamInEvent::SendControlMessage { dest, message },
+                    ));
                 }
             }
         }
@@ -563,8 +573,12 @@ where
                             _ => {}
                         }
                     }
-                    FramingUpstreamOutEvent::ControlMessageReceived { .. } => {
-                        // TODO: Handle control messages.
+                    FramingUpstreamOutEvent::ControlMessageReceived { src, message } => {
+                        // Notify the protocol's router service of the control message.
+                        self.protocol_router_service
+                            .do_send(ProtocolRouterInEvent::ControlEvent(
+                                ProtocolRouterControlEvent { src, message },
+                            ));
                     }
                 },
             }
