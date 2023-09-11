@@ -16,10 +16,11 @@ base64 = "0.21.4"
 bytes.workspace = true
 futures.workspace = true
 hex_fmt = "0.3.0"
+itertools = "0.11.0"
 libp2p.workspace = true
-prost = "0.12.0"
 libp2p-pubsub-common = { version = "0.1.0", path = "../pubsub-common" }
 libp2p-pubsub-proto = { version = "0.1.0", path = "../pubsub-proto" }
+prost = "0.12.0"
 sha2 = "0.10.7"
 thiserror.workspace = true
 tracing.workspace = true
@@ -29,7 +30,6 @@ unsigned-varint = { version = "0.7.2", features = ["asynchronous_codec"] }
 [dev-dependencies]
 assert_matches.workspace = true
 testlib = { path = "../testlib" }
-itertools = "0.11.0"
 rand = "0.8.5"
 tokio = { workspace = true, features = ["macros", "rt"] }
 tracing-futures = "0.2.5"

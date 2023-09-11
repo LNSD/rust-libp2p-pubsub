@@ -51,6 +51,15 @@ impl Service for DownstreamFramingService {
                 let frame = encode_frame(frame);
                 svc_cx.emit(DownstreamOutEvent::SendFrame { dest, frame });
             }
+            DownstreamInEvent::SendControlMessage { dest, message } => {
+                // Create a new frame with the control message, encode it and send it to the
+                // destination peer. The resulting frame will contain only one control message.
+                let frame = Frame::new_with_control([message]);
+
+                // Encode the frame into a byte buffer and send it to the destination peer.
+                let frame = encode_frame(frame);
+                svc_cx.emit(DownstreamOutEvent::SendFrame { dest, frame });
+            }
         }
     }
 }

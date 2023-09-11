@@ -3,9 +3,16 @@
 
 use bytes::Bytes;
 
-use libp2p_pubsub_proto::pubsub::{FrameProto, MessageProto, SubOptsProto};
+use libp2p_pubsub_proto::pubsub::{
+    ControlGraftProto, ControlIHaveProto, ControlIWantProto, ControlMessageProto,
+    ControlPruneProto, FrameProto, MessageProto, SubOptsProto,
+};
 
-use crate::framing::{Frame, Message, SubscriptionAction};
+use crate::framing::{
+    ControlMessage, Frame, GraftControlMessage, IHaveControlMessage, IWantControlMessage, Message,
+    PruneControlMessage, SubscriptionAction,
+};
+use crate::message_id::MessageId;
 use crate::topic::TopicHash;
 
 impl From<SubOptsProto> for SubscriptionAction {
@@ -86,6 +93,171 @@ impl From<Message> for MessageProto {
         message.into_proto()
     }
 }
+
+/// Validation errors for converting a [`ControlGraftProto`] into a [`GraftControlMessage`].
+#[derive(Debug, thiserror::Error)]
+pub enum ControlGraftMessageError {
+    #[error("topic_id not present")]
+    TopicIdNotPresent,
+
+    #[error("empty topic_id")]
+    EmptyTopicId,
+}
+
+impl TryFrom<ControlGraftProto> for GraftControlMessage {
+    type Error = ControlGraftMessageError;
+
+    /// Convert a [`ControlGraftProto`] into a [`ControlMessage`].
+    fn try_from(value: ControlGraftProto) -> Result<Self, Self::Error> {
+        let topic_hash = match value.topic_id {
+            None => return Err(ControlGraftMessageError::TopicIdNotPresent),
+            Some(topic) if topic.is_empty() => return Err(ControlGraftMessageError::EmptyTopicId),
+            Some(topic) => topic.into(),
+        };
+
+        Ok(GraftControlMessage { topic_hash })
+    }
+}
+
+impl From<GraftControlMessage> for ControlGraftProto {
+    /// Convert a [`ControlMessage`] into a [`ControlGraftProto`].
+    fn from(value: GraftControlMessage) -> Self {
+        Self {
+            topic_id: Some(value.topic_hash.into_string()),
+        }
+    }
+}
+
+/// Validation errors for converting a [`ControlPruneProto`] into a [`PruneControlMessage`].
+#[derive(Debug, thiserror::Error)]
+pub enum ControlPruneMessageError {
+    #[error("topic_id not present")]
+    TopicIdNotPresent,
+
+    #[error("empty topic_id")]
+    EmptyTopicId,
+}
+
+impl TryFrom<ControlPruneProto> for PruneControlMessage {
+    type Error = ControlPruneMessageError;
+
+    /// Convert a [`ControlPruneProto`] into a [`PruneControlMessage`].
+    fn try_from(value: ControlPruneProto) -> Result<Self, Self::Error> {
+        let topic_hash = match value.topic_id {
+            None => return Err(ControlPruneMessageError::TopicIdNotPresent),
+            Some(topic) if topic.is_empty() => return Err(ControlPruneMessageError::EmptyTopicId),
+            Some(topic) => topic.into(),
+        };
+
+        let backoff = value.backoff;
+
+        Ok(PruneControlMessage {
+            topic_hash,
+            peers: vec![], // TODO: Add support for peer exchange.
+            backoff,
+        })
+    }
+}
+
+impl From<PruneControlMessage> for ControlPruneProto {
+    /// Convert a [`ControlMessage`] into a [`ControlPruneProto`].
+    fn from(value: PruneControlMessage) -> Self {
+        Self {
+            topic_id: Some(value.topic_hash.into_string()),
+            peers: vec![], // TODO: Add support for peer exchange.
+            backoff: value.backoff,
+        }
+    }
+}
+
+/// Validation errors for converting a [`ControlIWantProto`] into a [`IWantControlMessage`].
+#[derive(Debug, thiserror::Error)]
+pub enum ControlIWantMessageError {
+    #[error("empty message_ids list")]
+    EmptyMessageIdsList,
+}
+
+impl TryFrom<ControlIWantProto> for IWantControlMessage {
+    type Error = ControlIWantMessageError;
+
+    /// Convert a [`ControlIWantProto`] into a [`ControlMessage`].
+    fn try_from(value: ControlIWantProto) -> Result<Self, Self::Error> {
+        let message_ids = value
+            .message_ids
+            .into_iter()
+            .filter(|id| !id.is_empty())
+            .map(MessageId::new)
+            .collect::<Vec<_>>();
+
+        if message_ids.is_empty() {
+            return Err(ControlIWantMessageError::EmptyMessageIdsList);
+        }
+
+        Ok(IWantControlMessage { message_ids })
+    }
+}
+
+impl From<IWantControlMessage> for ControlIWantProto {
+    /// Convert a [`ControlMessage`] into a [`ControlIWantProto`].
+    fn from(value: IWantControlMessage) -> Self {
+        Self {
+            message_ids: value.message_ids.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+/// Validation errors for converting a [`ControlIHaveProto`] into a [`IHaveControlMessage`].
+#[derive(Debug, thiserror::Error)]
+pub enum ControlIHaveMessageError {
+    #[error("topic_id not present")]
+    TopicIdNotPresent,
+
+    #[error("empty topic_id")]
+    EmptyTopicId,
+
+    #[error("empty message_ids list")]
+    EmptyMessageIdsList,
+}
+
+impl TryFrom<ControlIHaveProto> for IHaveControlMessage {
+    type Error = ControlIHaveMessageError;
+
+    /// Convert a [`ControlIHaveProto`] into a [`ControlMessage`].
+    fn try_from(value: ControlIHaveProto) -> Result<Self, Self::Error> {
+        let topic_hash = match value.topic_id {
+            None => return Err(ControlIHaveMessageError::TopicIdNotPresent),
+            Some(topic) if topic.is_empty() => return Err(ControlIHaveMessageError::EmptyTopicId),
+            Some(topic) => topic.into(),
+        };
+
+        let message_ids = value
+            .message_ids
+            .into_iter()
+            .filter(|id| !id.is_empty())
+            .map(MessageId::new)
+            .collect::<Vec<_>>();
+
+        if message_ids.is_empty() {
+            return Err(ControlIHaveMessageError::EmptyMessageIdsList);
+        }
+
+        Ok(IHaveControlMessage {
+            topic_hash,
+            message_ids,
+        })
+    }
+}
+
+impl From<IHaveControlMessage> for ControlIHaveProto {
+    /// Convert a [`ControlMessage`] into a [`ControlIHaveProto`].
+    fn from(value: IHaveControlMessage) -> Self {
+        Self {
+            topic_id: Some(value.topic_hash.into_string()),
+            message_ids: value.message_ids.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 impl From<Frame> for FrameProto {
     /// Convert a [`Frame`] into a [`FrameProto`].
     fn from(frame: Frame) -> Self {
@@ -95,8 +267,32 @@ impl From<Frame> for FrameProto {
         // Convert the messages into a protobuf message.
         let publish = frame.messages.into_iter().map(Into::into).collect();
 
-        // TODO: Convert the control messages into a protobuf message.
-        let control = None;
+        // Convert the control messages into a protobuf message.
+        let control = if frame.control.is_empty() {
+            None
+        } else {
+            Some(frame.control.into_iter().map(Into::into).fold(
+                ControlMessageProto::default(),
+                |mut acc, ctl_msg| {
+                    match ctl_msg {
+                        ControlMessage::Graft(ctl) => {
+                            acc.graft.push(ctl.into());
+                        }
+                        ControlMessage::Prune(ctl) => {
+                            acc.prune.push(ctl.into());
+                        }
+                        ControlMessage::IHave(ctl) => {
+                            acc.ihave.push(ctl.into());
+                        }
+                        ControlMessage::IWant(ctl) => {
+                            acc.iwant.push(ctl.into());
+                        }
+                    }
+
+                    acc
+                },
+            ))
+        };
 
         Self {
             subscriptions,
