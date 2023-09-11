@@ -1,54 +1,33 @@
-use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
+use libp2p::identity::PeerId;
+
 use crate::framing::Message;
-use crate::message_id::MessageIdFn;
-use crate::topic::TopicHash;
+use crate::message_id::MessageId;
 
 /// Message cache service input event.
-#[derive(Debug, Clone)]
-pub enum ServiceIn {
-    /// A subscription event.
-    SubscriptionEvent(SubscriptionEvent),
-    /// A message was published by the local node.
-    MessagePublished(Rc<Message>),
-    /// A message was received from a remote peer.
-    MessageReceived(Rc<Message>),
-}
-
-/// Node subscriptions event.
 #[derive(Clone)]
-pub enum SubscriptionEvent {
-    /// The node subscribed to a topic.
-    Subscribed {
-        topic: TopicHash,
-        message_id_fn: Option<Rc<MessageIdFn>>,
-    },
-    /// The node unsubscribed from a topic.
-    Unsubscribed(TopicHash),
+pub enum ServiceIn {
+    /// A message event occurred.
+    MessageEvent(MessageEvent),
 }
 
-impl Debug for SubscriptionEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SubscriptionEvent::Subscribed {
-                topic,
-                message_id_fn,
-            } => f
-                .debug_struct("Subscribed")
-                .field("topic", topic)
-                .field(
-                    "message_id_fn",
-                    match message_id_fn {
-                        None => &"MessageIdFn(default)",
-                        Some(_) => &"MessageIdFn(custom)",
-                    },
-                )
-                .finish(),
-            SubscriptionEvent::Unsubscribed(topic) => f
-                .debug_struct("Unsubscribed")
-                .field("topic", topic)
-                .finish(),
-        }
-    }
+#[derive(Clone)]
+pub enum MessageEvent {
+    /// A message was published by the local node.
+    MessagePublished {
+        /// The message.
+        message: Rc<Message>,
+        /// The message id.
+        message_id: MessageId,
+    },
+    /// A message was received from a remote peer.
+    MessageReceived {
+        /// The propagation node peer id.
+        src: PeerId,
+        /// The message.
+        message: Rc<Message>,
+        /// The message id.
+        message_id: MessageId,
+    },
 }
