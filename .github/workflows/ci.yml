@@ -70,7 +70,7 @@ jobs:
 
       - name: Cargo clippy
         if: matrix.rust == 'stable'
-        run: cargo clippy --all-targets --all-features -- -D warnings --force-warn deprecated
+        run: cargo clippy --all-targets --all-features -- -D warnings --force-warn deprecated --force-warn dead-code
 
       - name: Cargo doc
         if: matrix.rust == 'stable'
