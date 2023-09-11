@@ -1,6 +1,7 @@
 pub use protocol_trait::Protocol;
 pub use router_trait::{
-    ProtocolRouter, ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
+    ProtocolRouter, ProtocolRouterConnectionEvent, ProtocolRouterControlEvent,
+    ProtocolRouterInEvent, ProtocolRouterMessageEvent, ProtocolRouterOutEvent,
     ProtocolRouterSubscriptionEvent,
 };
 

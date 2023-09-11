@@ -4,8 +4,8 @@ use libp2p::identity::PeerId;
 
 use libp2p_pubsub_common::service::{OnEventCtx, Service};
 use libp2p_pubsub_core::protocol::{
-    ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterOutEvent,
-    ProtocolRouterSubscriptionEvent,
+    ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterMessageEvent,
+    ProtocolRouterOutEvent, ProtocolRouterSubscriptionEvent,
 };
 use libp2p_pubsub_core::TopicHash;
 
@@ -112,7 +112,11 @@ impl Service for Router {
                     self.remove_peer_subscription(&peer, &topic);
                 }
             },
-            ProtocolRouterInEvent::MessageReceived { src, message, .. } => {
+            ProtocolRouterInEvent::MessageEvent(ProtocolRouterMessageEvent::MessageReceived {
+                src,
+                message,
+                ..
+            }) => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
                     return;
@@ -134,7 +138,10 @@ impl Service for Router {
                     });
                 }
             }
-            ProtocolRouterInEvent::MessagePublished { message, .. } => {
+            ProtocolRouterInEvent::MessageEvent(ProtocolRouterMessageEvent::MessagePublished {
+                message,
+                ..
+            }) => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
                     return;
@@ -149,6 +156,9 @@ impl Service for Router {
                 } else {
                     tracing::debug!("No peers subscribed to topic: {:?}", topic);
                 }
+            }
+            ProtocolRouterInEvent::ControlEvent(_) => {
+                // No-op
             }
         }
     }
