@@ -7,11 +7,10 @@ pub mod topic_descriptor {
 }
 
 pub mod pubsub {
-    pub use super::gen::libp2p::pubsub::v1::rpc::SubOpts as SubOptsProto;
     pub use super::gen::libp2p::pubsub::v1::{
         ControlGraft as ControlGraftProto, ControlIHave as ControlIHaveProto, ControlIHave,
         ControlIWant as ControlIWantProto, ControlMessage as ControlMessageProto,
-        ControlPrune as ControlPruneProto, Message as MessageProto, PeerInfo as PeerInfoProto,
-        Rpc as FrameProto,
+        ControlPrune as ControlPruneProto, Frame as FrameProto, Message as MessageProto,
+        PeerInfo as PeerInfoProto, SubOpts as SubOptsProto,
     };
 }
