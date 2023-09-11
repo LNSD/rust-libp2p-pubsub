@@ -12,6 +12,8 @@ readme = "../meta/README.md"
 [features]
 # Enable to run protobuf messages code generation at compile time (requires Buf CLI, protoc, etc.).
 proto-gen = []
+# Enable to run protobuf messages documentation generation at compile time (requires protoc, protoc-gen-doc, etc.).
+proto-gen-doc = []
 
 [dependencies]
 prost = "0.12.0"
