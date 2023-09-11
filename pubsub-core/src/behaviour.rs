@@ -563,6 +563,9 @@ where
                             _ => {}
                         }
                     }
+                    FramingUpstreamOutEvent::ControlMessageReceived { .. } => {
+                        // TODO: Handle control messages.
+                    }
                 },
             }
         }
