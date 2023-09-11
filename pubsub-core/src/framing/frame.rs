@@ -1,21 +1,17 @@
-use libp2p_pubsub_proto::pubsub::FrameProto;
-
-use crate::framing::message::Message;
-use crate::framing::subopts::SubscriptionAction;
+use super::message::Message;
+use super::subopts::SubscriptionAction;
 
 // TODO: Add control messages support
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
     /// The subscriptions to add or remove.
-    subscriptions: Vec<SubscriptionAction>,
-
+    pub(crate) subscriptions: Vec<SubscriptionAction>,
     /// The messages to send.
-    messages: Vec<Message>,
+    pub(crate) messages: Vec<Message>,
 }
 
 impl Frame {
     /// Creates a new empty [`Frame`].
-    #[cfg(test)]
     pub fn empty() -> Self {
         Self {
             subscriptions: Vec::new(),
@@ -30,7 +26,7 @@ impl Frame {
     ) -> Self {
         Self {
             subscriptions: subscriptions.into_iter().collect(),
-            ..Default::default()
+            ..Self::empty()
         }
     }
 
@@ -39,18 +35,7 @@ impl Frame {
     pub fn new_with_messages(messages: impl IntoIterator<Item = Message>) -> Self {
         Self {
             messages: messages.into_iter().collect(),
-            ..Default::default()
-        }
-    }
-}
-
-impl From<Frame> for FrameProto {
-    /// Convert a [`Frame`] into a [`FrameProto`].
-    fn from(frame: Frame) -> Self {
-        Self {
-            subscriptions: frame.subscriptions.into_iter().map(Into::into).collect(),
-            publish: frame.messages.into_iter().map(Into::into).collect(),
-            control: None,
+            ..Self::empty()
         }
     }
 }
