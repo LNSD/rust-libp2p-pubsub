@@ -1,6 +1,7 @@
 use libp2p::identity::PeerId;
 
 use crate::message::Message;
+use crate::message_id::MessageId;
 
 /// This enum represents events that can be emitted by the pubsub
 /// [`Behaviour`](super::behaviour::Behaviour).
@@ -17,5 +18,7 @@ pub enum Event {
         src: PeerId,
         /// The message itself.
         message: Message,
+        /// The message id.
+        message_id: MessageId,
     },
 }

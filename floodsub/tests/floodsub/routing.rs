@@ -126,7 +126,7 @@ async fn publish_to_topic() {
         1,
         "Only 1 message event should be emitted"
     );
-    assert_matches!(&sub_events[0], SwarmEvent::Behaviour(Event::MessageReceived { src, message }) => {
+    assert_matches!(&sub_events[0], SwarmEvent::Behaviour(Event::MessageReceived { src, message, .. }) => {
         // Assert the propagation peer
         assert_eq!(src, publisher.local_peer_id(), "The message should be propagated by the publisher");
         // Assert the message

@@ -453,7 +453,10 @@ where
 
                     // Notify the protocol's service of the published message.
                     self.protocol_router_service
-                        .do_send(ProtocolRouterInEvent::MessagePublished(message.clone()));
+                        .do_send(ProtocolRouterInEvent::MessagePublished {
+                            message,
+                            message_id,
+                        });
                 }
                 MessageIdOutEvent::MessageReceived {
                     src,
@@ -480,13 +483,15 @@ where
                         .push_back(ToSwarm::GenerateEvent(Event::MessageReceived {
                             src,
                             message: (*message).clone().into(),
+                            message_id: message_id.clone(),
                         }));
 
                     // Notify the protocol's service of the received message.
                     self.protocol_router_service
                         .do_send(ProtocolRouterInEvent::MessageReceived {
                             src,
-                            message: message.clone(),
+                            message,
+                            message_id,
                         });
                 }
             }

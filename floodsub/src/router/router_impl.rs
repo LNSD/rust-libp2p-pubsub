@@ -112,7 +112,7 @@ impl Service for Router {
                     self.remove_peer_subscription(&peer, &topic);
                 }
             },
-            ProtocolRouterInEvent::MessageReceived { src, message } => {
+            ProtocolRouterInEvent::MessageReceived { src, message, .. } => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
                     return;
@@ -134,7 +134,7 @@ impl Service for Router {
                     });
                 }
             }
-            ProtocolRouterInEvent::MessagePublished(message) => {
+            ProtocolRouterInEvent::MessagePublished { message, .. } => {
                 let topic = message.topic();
                 if !self.is_subscribed(&topic) {
                     return;
