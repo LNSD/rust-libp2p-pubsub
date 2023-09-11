@@ -65,42 +65,97 @@ fn check_build_requirements() -> Result<(), String> {
     Ok(())
 }
 
-fn main() {
-    // Run code generation only if 'proto-gen' feature is enabled.
-    if env::var("CARGO_FEATURE_PROTO_GEN").is_err() {
-        println!("Skipping code generation. 'proto-gen' feature is not enabled.");
-        return;
+fn check_build_doc_requiremenrs() -> Result<(), String> {
+    let mut errors = vec![];
+
+    // Check if buf is installed.
+    let buf = Command::new("buf").arg("--version").status().unwrap();
+    if !buf.success() {
+        errors.push("Buf CLI not found. Please install buf: https://docs.buf.build/installation");
     }
 
-    // Check if all the build requirements are met.
-    if let Err(err) = check_build_requirements() {
-        panic!("{}", err);
+    // Check if protoc is installed.
+    let protoc = Command::new("protoc").arg("--version").status().unwrap();
+    if !protoc.success() {
+        errors.push(
+            "protoc not found. Please install protoc: https://grpc.io/docs/protoc-installation/",
+        );
     }
 
-    let src_dir = root_dir().join("src");
-    let src_gen_dir = root_dir().join("src/gen");
-    let proto_dir = root_dir().join("proto");
-    let buf_gen_yaml = root_dir().join("proto/buf.gen.yaml");
-
-    // Remove the generated code directory if it exists.
-    if src_gen_dir.exists() {
-        std::fs::remove_dir_all(&src_gen_dir).unwrap();
-    }
-
-    // Run `buf generate` to generate the protobuf code. See Buf CLI's generate documentation for
-    // more information: https://buf.build/docs/generate/overview
-    let status = Command::new("buf")
-        .arg("generate")
-        .arg("--template")
-        .arg(&buf_gen_yaml)
-        .arg("--output")
-        .arg(&src_dir)
-        .current_dir(&proto_dir)
+    // Check if protoc-gen-doc is installed.
+    let protoc_gen_prost_crate = Command::new("protoc-gen-doc")
+        .arg("--version")
         .status()
         .unwrap();
+    if !protoc_gen_prost_crate.success() {
+        errors.push("protoc-gen-doc not found. Please install protoc-gen-doc: go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@latest");
+    }
 
-    if !status.success() {
-        panic!("Protobuf code generation failed: {}", status);
+    if !errors.is_empty() {
+        return Err(format!(
+            "Build requirements not met:\n - {}",
+            errors.join("\n - ")
+        ));
+    }
+
+    Ok(())
+}
+
+fn main() {
+    // Run code generation only if 'proto-gen' feature is enabled.
+    if env::var("CARGO_FEATURE_PROTO_GEN").is_ok() {
+        // Check if all the build requirements are met.
+        if let Err(err) = check_build_requirements() {
+            panic!("{}", err);
+        }
+
+        let src_dir = root_dir().join("src");
+        let proto_dir = root_dir().join("proto");
+        let buf_gen_yaml = root_dir().join("proto/buf.gen.yaml");
+
+        // Run `buf generate` to generate the protobuf code. See Buf CLI's generate documentation for
+        // more information: https://buf.build/docs/generate/overview
+        let status = Command::new("buf")
+            .arg("generate")
+            .arg("--template")
+            .arg(&buf_gen_yaml)
+            .arg("--output")
+            .arg(&src_dir)
+            .current_dir(&proto_dir)
+            .status()
+            .unwrap();
+
+        if !status.success() {
+            panic!("Protobuf code generation failed: {}", status);
+        }
+    }
+
+    // Run code generation only if 'proto-gen-doc' feature is enabled.
+    if env::var("CARGO_FEATURE_PROTO_GEN_DOC").is_ok() {
+        // Check if all the build requirements are met.
+        if let Err(err) = check_build_doc_requiremenrs() {
+            panic!("{}", err);
+        }
+
+        let src_dir = root_dir().join("src");
+        let proto_dir = root_dir().join("proto");
+        let doc_gen_yaml = root_dir().join("proto/doc.gen.yaml");
+
+        // Run `buf generate` to generate the protobuf code. See Buf CLI's generate documentation for
+        // more information: https://buf.build/docs/generate/overview
+        let status = Command::new("buf")
+            .arg("generate")
+            .arg("--template")
+            .arg(&doc_gen_yaml)
+            .arg("--output")
+            .arg(&src_dir)
+            .current_dir(&proto_dir)
+            .status()
+            .unwrap();
+
+        if !status.success() {
+            panic!("Protobuf doc generation failed: {}", status);
+        }
     }
 
     // Re-run this build script if any of the proto files have changed.

@@ -22,6 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v4
+
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -51,6 +54,10 @@ jobs:
         with:
           crate: protoc-gen-prost-crate
 
+      - name: Install Protoc's doc plugin
+        run: |
+          go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@latest
+
       - name: Install Cargo LLVM cov
         uses: baptiste0928/cargo-install@v2
         with:
@@ -63,6 +70,19 @@ jobs:
 
       - name: Cargo check
         run: cargo check --all-targets --all-features
+
+      - name: Check uncommitted generated files
+        uses: tj-actions/verify-changed-files@main
+        if: matrix.rust == 'stable'
+        with:
+          files: pubsub-proto/src/gen/**
+          fail-if-changed: true
+          fail-message: |
+            The following files changed after running cargo check command:
+
+            ${{ steps.verify-changed-files.outputs.files }}
+
+            Please run `cargo build` locally and commit the changes.
 
       - name: Cargo fmt
         if: matrix.rust == 'stable'

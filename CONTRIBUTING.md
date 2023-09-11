@@ -61,6 +61,14 @@ To work on the protocol buffer definitions, you will need to install the followi
     cargo install protoc-gen-prost-crate --locked
     ```
 
+To work on the protocol buffers documentation, you will need to install the following tools:
+
+- Golang (https://golang.org/doc/install)
+- Protoc doc plugin (https://github.com/pseudomuto/protoc-gen-doc)
+    ```
+    go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@latest
+    ```
+
 ### Making Changes
 
 1. **Fork the repository**: To contribute to this project, start by forking the repository on GitHub. This creates a copy of the repository under your GitHub account, allowing you to experiment with changes without affecting the original project.
