@@ -55,12 +55,17 @@ impl<U> Handler<U>
 where
     U: ProtocolUpgradeSend + 'static,
 {
-    pub fn new(upgrade: U, max_frame_size: usize, idle_timeout: Duration) -> Self {
+    pub fn new(
+        upgrade: U,
+        max_frame_size: usize,
+        idle_timeout: Duration,
+        max_send_retry_attempts: usize,
+    ) -> Self {
         Self {
             upgrade,
             keep_alive: true,
             max_frame_size,
-            downstream: BufferedContext::new(Downstream::new(2)),
+            downstream: BufferedContext::new(Downstream::new(max_send_retry_attempts)),
             inbound_substream: Default::default(),
             last_io_activity: Instant::now(),
             idle_timeout,

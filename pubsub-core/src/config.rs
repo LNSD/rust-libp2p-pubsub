@@ -8,6 +8,10 @@ pub struct Config {
     /// The idle timeout of a connection.
     connection_idle_timeout: Duration,
 
+    /// The number of retries that will be attempted to send a frame over a connection before
+    /// giving up on the connection.
+    max_connection_send_retry_attempts: usize,
+
     /// Time between each heartbeat.
     heartbeat_interval: Duration,
 
@@ -23,6 +27,7 @@ impl Default for Config {
         Self {
             max_frame_size: 65537,
             connection_idle_timeout: Duration::from_secs(120),
+            max_connection_send_retry_attempts: 2,
             heartbeat_interval: Duration::from_secs(1),
             message_cache_capacity: 1024,
             message_cache_ttl: Duration::from_secs(5),
@@ -47,6 +52,14 @@ impl Config {
     /// Default is 120 seconds.
     pub fn connection_idle_timeout(&self) -> Duration {
         self.connection_idle_timeout
+    }
+
+    /// The number of retries that will be attempted to send a frame over a connection before
+    /// giving up on the connection.
+    ///
+    /// Default is 2.
+    pub fn max_connection_send_retry_attempts(&self) -> usize {
+        self.max_connection_send_retry_attempts
     }
 
     /// The time between each heartbeat.

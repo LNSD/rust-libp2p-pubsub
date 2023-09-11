@@ -54,16 +54,16 @@ pub struct Downstream {
     outbound_substream_requested: bool,
     /// The send queue.
     send_queue: VecDeque<Bytes>,
-    /// The maximum number of send retries.
-    max_send_retries: usize,
+    /// The maximum number of send retry attempts.
+    max_send_retry_attempts: usize,
     /// The number of send retries.
     send_retries: usize,
 }
 
 impl Downstream {
-    pub fn new(max_send_retries: usize) -> Self {
+    pub fn new(max_send_retry_attempts: usize) -> Self {
         Self {
-            max_send_retries,
+            max_send_retry_attempts,
             outbound_substream: None,
             outbound_substream_requested: false,
             send_retries: 0,
@@ -149,7 +149,7 @@ impl Service for Downstream {
 
                         // If the maximum number of send retries has been reached, return an error,
                         // otherwise increment the retries counter.
-                        if self.send_retries >= self.max_send_retries {
+                        if self.send_retries >= self.max_send_retry_attempts {
                             return Poll::Ready(Err(DownstreamError::MaxRetriesReached));
                         } else {
                             self.send_retries += 1;
