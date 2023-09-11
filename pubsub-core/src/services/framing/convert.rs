@@ -2,6 +2,7 @@
 //! [libp2p pubsub protobuf](libp2p_pubsub_proto::pubsub) types.
 
 use bytes::Bytes;
+use libp2p::PeerId;
 
 use libp2p_pubsub_proto::pubsub::{
     ControlGraftProto, ControlIHaveProto, ControlIWantProto, ControlMessageProto,
@@ -15,20 +16,59 @@ use crate::framing::{
 use crate::message_id::MessageId;
 use crate::topic::TopicHash;
 
-impl From<SubOptsProto> for SubscriptionAction {
+/// Errors that can occur when validating a [`SubOptsProto`].
+///
+/// See [`validate_subopts_proto`] for more details.
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+pub enum SubOptsValidationError {
+    /// Empty message topic.
+    #[error("empty topic")]
+    EmptyTopic,
+
+    /// Topic not present.
+    #[error("topic not present")]
+    MissingTopic,
+
+    /// Action not present.
+    #[error("subscription action not present")]
+    MissingAction,
+}
+
+impl TryFrom<SubOptsProto> for SubscriptionAction {
+    type Error = SubOptsValidationError;
+
     /// Convert a [`SubOptsProto`] into a [`SubscriptionAction`].
-    fn from(proto: SubOptsProto) -> Self {
-        match proto {
-            SubOptsProto {
-                subscribe: Some(subscribe),
-                topic_id: Some(topic_id),
-            } if subscribe => SubscriptionAction::Subscribe(TopicHash::from_raw(topic_id)),
-            SubOptsProto {
-                subscribe: Some(subscribe),
-                topic_id: Some(topic_id),
-            } if !subscribe => SubscriptionAction::Unsubscribe(TopicHash::from_raw(topic_id)),
-            _ => unreachable!("invalid SubOptsProto: {proto:?}"),
+    ///
+    /// A subscription option protobuf is valid if:
+    /// - The `topic_id` is present and not empty.
+    /// - The `subscribe` field is present.
+    ///
+    /// If the subscription option is invalid, a [`SubOptsValidationError`] is returned.
+    fn try_from(proto: SubOptsProto) -> Result<Self, Self::Error> {
+        match proto.topic_id.as_ref() {
+            None => {
+                // Topic field must be present.
+                return Err(SubOptsValidationError::MissingTopic);
+            }
+            Some(topic) if topic.is_empty() => {
+                // Topic field must not be empty.
+                return Err(SubOptsValidationError::EmptyTopic);
+            }
+            _ => {}
         }
+
+        if proto.subscribe.is_none() {
+            // Action field must be present.
+            return Err(SubOptsValidationError::MissingAction);
+        }
+
+        let action = if proto.subscribe.unwrap() {
+            SubscriptionAction::Subscribe(TopicHash::from_raw(proto.topic_id.unwrap()))
+        } else {
+            SubscriptionAction::Unsubscribe(TopicHash::from_raw(proto.topic_id.unwrap()))
+        };
+
+        Ok(action)
     }
 }
 
@@ -44,25 +84,55 @@ impl From<SubscriptionAction> for SubOptsProto {
     }
 }
 
-impl From<MessageProto> for Message {
+/// Errors that can occur when validating a [`MessageProto`].
+///
+/// See [`validate_message_proto`] for more details.
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+pub enum MessageValidationError {
+    /// Empty message topic.
+    #[error("empty topic")]
+    EmptyTopic,
+    /// The message source was invalid (invalid peer ID).
+    #[error("invalid peer id")]
+    InvalidPeerId,
+}
+
+impl TryFrom<MessageProto> for Message {
+    type Error = MessageValidationError;
+
     /// Convert from a [`MessageProto`] into a [`Message`].
     ///
+    /// A message protobuf is valid if:
+    /// - The `topic` is not empty.
+    /// - The `from` field's peer ID, if present, is valid.
+    ///
     /// Additionally. sanitize the protobuf message by removing optional fields when empty.
-    #[must_use]
-    fn from(mut proto: MessageProto) -> Self {
+    fn try_from(mut proto: MessageProto) -> Result<Self, Self::Error> {
+        if proto.topic.is_empty() {
+            // topic field must not be empty
+            return Err(MessageValidationError::EmptyTopic);
+        }
+
         // A non-present data field should be interpreted as an empty payload.
         if proto.data.is_none() {
             proto.data = Some(Bytes::new());
         }
 
         // An empty from field should be interpreted as not present.
-        if let Some(from) = proto.from.as_ref() {
-            if from.is_empty() {
+        match proto.from.as_ref() {
+            Some(from) if from.is_empty() => {
                 proto.from = None;
             }
+            Some(from) => {
+                // If present, from field must hold a valid PeerId
+                if PeerId::from_bytes(from).is_err() {
+                    return Err(MessageValidationError::InvalidPeerId);
+                }
+            }
+            None => {}
         }
 
-        // An empty seqno field should be interpreted as not present.
+        // An empty seq_no field should be interpreted as not present.
         if let Some(seq_no) = proto.seqno.as_ref() {
             if seq_no.is_empty() {
                 proto.seqno = None;
@@ -83,7 +153,7 @@ impl From<MessageProto> for Message {
             }
         }
 
-        Self { proto }
+        Ok(Self { proto })
     }
 }
 

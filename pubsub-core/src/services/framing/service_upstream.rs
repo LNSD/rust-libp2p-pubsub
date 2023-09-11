@@ -12,9 +12,7 @@ use libp2p_pubsub_proto::pubsub::{
 use crate::framing::{ControlMessage, Message as FrameMessage, SubscriptionAction};
 
 use super::events::{UpstreamInEvent, UpstreamOutEvent};
-use super::validation::{
-    validate_control_proto, validate_frame_proto, validate_message_proto, validate_subopts_proto,
-};
+use super::validation::validate_frame_proto;
 
 /// The upstream framing service is responsible for decoding, validating and processing the
 /// received frames and emitting the  received messages and subscription request events.
@@ -59,16 +57,18 @@ fn process_raw_frame_messages(
     src: PeerId,
     messages: Vec<MessageProto>,
 ) -> impl IntoIterator<Item = FrameMessage> {
-    messages.into_iter().filter_map(move |msg| {
-        if let Err(err) = validate_message_proto(&msg) {
-            tracing::trace!(%src, "Received invalid message: {}", err);
-            return None;
-        }
-
-        tracing::trace!(%src, "Message received");
-
-        Some(FrameMessage::from(msg))
-    })
+    messages
+        .into_iter()
+        .filter_map(move |msg| match msg.try_into() {
+            Ok(msg) => {
+                tracing::trace!(%src, "Message received");
+                Some(msg)
+            }
+            Err(err) => {
+                tracing::trace!(%src, "Received invalid message: {}", err);
+                None
+            }
+        })
 }
 
 /// Validates, sanitizes and processes the raw frame subscription requests.
@@ -76,16 +76,18 @@ fn process_raw_frame_subscription_requests(
     src: PeerId,
     subscriptions: Vec<SubOptsProto>,
 ) -> impl IntoIterator<Item = SubscriptionAction> {
-    subscriptions.into_iter().filter_map(move |sub| {
-        if let Err(err) = validate_subopts_proto(&sub) {
-            tracing::trace!(%src, "Received invalid subscription action: {}", err);
-            return None;
-        }
-
-        tracing::trace!(%src, "Subscription action received");
-
-        Some(SubscriptionAction::from(sub))
-    })
+    subscriptions
+        .into_iter()
+        .filter_map(move |sub| match sub.try_into() {
+            Ok(sub) => {
+                tracing::trace!(%src, "Subscription request received");
+                Some(sub)
+            }
+            Err(err) => {
+                tracing::trace!(%src, "Received invalid subscription action: {}", err);
+                None
+            }
+        })
 }
 
 /// Validates, sanitizes and processes the raw frame control messages.
@@ -93,63 +95,51 @@ fn process_raw_frame_control_messages(
     src: PeerId,
     control: Option<ControlMessageProto>,
 ) -> impl IntoIterator<Item = ControlMessage> {
-    control
-        .into_iter()
-        .filter_map(move |ctrl| {
-            if let Err(err) = validate_control_proto(&ctrl) {
-                tracing::trace!(%src, "Received invalid control message: {}", err);
-                return None;
-            }
+    control.into_iter().flat_map(move |ctrl_msg| {
+        let graft = ctrl_msg
+            .graft
+            .into_iter()
+            .filter_map(move |ctrl| match ctrl.try_into() {
+                Ok(ctrl) => Some(ControlMessage::Graft(ctrl)),
+                Err(err) => {
+                    tracing::trace!(%src, "Received invalid graft control message: {}", err);
+                    None
+                }
+            });
+        let prune = ctrl_msg
+            .prune
+            .into_iter()
+            .filter_map(move |ctrl| match ctrl.try_into() {
+                Ok(ctrl) => Some(ControlMessage::Prune(ctrl)),
+                Err(err) => {
+                    tracing::trace!(%src, "Received invalid prune control message: {}", err);
+                    None
+                }
+            });
 
-            tracing::trace!(%src, "Control message received");
+        let ihave = ctrl_msg
+            .ihave
+            .into_iter()
+            .filter_map(move |ctrl| match ctrl.try_into() {
+                Ok(ctrl) => Some(ControlMessage::IHave(ctrl)),
+                Err(err) => {
+                    tracing::trace!(%src, "Received invalid iwant control message: {}", err);
+                    None
+                }
+            });
+        let iwant = ctrl_msg
+            .iwant
+            .into_iter()
+            .filter_map(move |ctrl| match ctrl.try_into() {
+                Ok(ctrl) => Some(ControlMessage::IWant(ctrl)),
+                Err(err) => {
+                    tracing::trace!(%src, "Received invalid ihave control message: {}", err);
+                    None
+                }
+            });
 
-            Some(ctrl)
-        })
-        .flat_map(move |ctrl_msg| {
-            let graft = ctrl_msg
-                .graft
-                .into_iter()
-                .filter_map(move |ctrl| match ctrl.try_into() {
-                    Ok(ctrl) => Some(ControlMessage::Graft(ctrl)),
-                    Err(err) => {
-                        tracing::trace!(%src, "Received invalid graft control message: {}", err);
-                        None
-                    }
-                });
-            let prune = ctrl_msg
-                .prune
-                .into_iter()
-                .filter_map(move |ctrl| match ctrl.try_into() {
-                    Ok(ctrl) => Some(ControlMessage::Prune(ctrl)),
-                    Err(err) => {
-                        tracing::trace!(%src, "Received invalid prune control message: {}", err);
-                        None
-                    }
-                });
-
-            let ihave = ctrl_msg
-                .ihave
-                .into_iter()
-                .filter_map(move |ctrl| match ctrl.try_into() {
-                    Ok(ctrl) => Some(ControlMessage::IHave(ctrl)),
-                    Err(err) => {
-                        tracing::trace!(%src, "Received invalid iwant control message: {}", err);
-                        None
-                    }
-                });
-            let iwant = ctrl_msg
-                .iwant
-                .into_iter()
-                .filter_map(move |ctrl| match ctrl.try_into() {
-                    Ok(ctrl) => Some(ControlMessage::IWant(ctrl)),
-                    Err(err) => {
-                        tracing::trace!(%src, "Received invalid ihave control message: {}", err);
-                        None
-                    }
-                });
-
-            itertools::chain!(graft, prune, ihave, iwant)
-        })
+        itertools::chain!(graft, prune, ihave, iwant)
+    })
 }
 
 impl Service for UpstreamFramingService {
