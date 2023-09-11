@@ -72,7 +72,7 @@ jobs:
         run: cargo check --all-targets --all-features
 
       - name: Check uncommitted generated files
-        uses: tj-actions/verify-changed-files@v16
+        uses: tj-actions/verify-changed-files@main
         if: matrix.rust == 'stable'
         with:
           files: pubsub-proto/src/gen/**
