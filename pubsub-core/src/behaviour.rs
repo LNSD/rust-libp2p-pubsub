@@ -238,6 +238,7 @@ where
             P::upgrade(),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
+            self.config.max_connection_send_retry_attempts(),
         ))
     }
 
@@ -260,6 +261,7 @@ where
             P::upgrade(),
             self.config.max_frame_size(),
             self.config.connection_idle_timeout(),
+            self.config.max_connection_send_retry_attempts(),
         ))
     }
 
