@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use libp2p_pubsub_common::service::{OnEventCtx, Service};
 
-use crate::message_id::{default_message_id_fn, MessageIdFn};
+use crate::message_id::{default_message_id_fn, MessageId, MessageIdFn};
 use crate::topic::TopicHash;
 
 use super::events::{MessageEvent, ServiceIn, ServiceOut, SubscriptionEvent};
@@ -19,7 +19,7 @@ use super::events::{MessageEvent, ServiceIn, ServiceOut, SubscriptionEvent};
 #[derive(Default)]
 pub struct MessageIdService {
     /// A table mapping the Topic with the `MessageID` function.
-    message_id_fn: HashMap<TopicHash, Rc<MessageIdFn>>,
+    message_id_fn: HashMap<TopicHash, Rc<dyn MessageIdFn<Output = MessageId>>>,
 }
 
 impl Service for MessageIdService {
@@ -42,8 +42,8 @@ impl Service for MessageIdService {
             }
             ServiceIn::MessageEvent(MessageEvent::Published(message)) => {
                 let message_id = match self.message_id_fn.get(&message.topic()) {
-                    None => default_message_id_fn(&message),
-                    Some(id_fn) => id_fn(&message),
+                    None => default_message_id_fn(None, &message.as_ref().into()),
+                    Some(id_fn) => id_fn(None, &message.as_ref().into()),
                 };
 
                 // Emit the message event with the message id.
@@ -54,8 +54,8 @@ impl Service for MessageIdService {
             }
             ServiceIn::MessageEvent(MessageEvent::Received { src, message }) => {
                 let message_id = match self.message_id_fn.get(&message.topic()) {
-                    None => default_message_id_fn(&message),
-                    Some(id_fn) => id_fn(&message),
+                    None => default_message_id_fn(Some(&src), &message.as_ref().into()),
+                    Some(id_fn) => id_fn(Some(&src), &message.as_ref().into()),
                 };
 
                 // Emit the message event with the message id.

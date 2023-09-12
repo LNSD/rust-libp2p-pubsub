@@ -20,9 +20,9 @@ pub struct Message {
     /// The topic this message is published to.
     pub topic: TopicHash,
     /// The signature of this message.
-    pub signature: Option<Vec<u8>>,
+    pub signature: Option<Bytes>,
     /// The key of this message.
-    pub key: Option<Vec<u8>>,
+    pub key: Option<Bytes>,
 }
 
 impl Message {

@@ -1,7 +1,5 @@
-use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
-use crate::framing::Message as FrameMessage;
 use crate::message_id::{MessageId, MessageIdFn};
 use crate::topic::{Hasher, Topic, TopicHash};
 
@@ -10,18 +8,18 @@ pub struct Subscription {
     /// The topic to subscribe to.
     pub topic: TopicHash,
     /// The message id function to use for this subscription.
-    pub message_id_fn: Option<Rc<MessageIdFn>>,
+    pub message_id_fn: Option<Rc<dyn MessageIdFn<Output = MessageId>>>,
 }
 
-impl Debug for Subscription {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Debug for Subscription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Subscription")
             .field("topic", &self.topic)
             .field(
                 "message_id_fn",
                 match &self.message_id_fn {
-                    None => &"MessageIdFn(not_defined)",
-                    Some(_) => &"MessageIdFn(custom)",
+                    None => &"MessageIdFn(<undefined>)",
+                    Some(_) => &"MessageIdFn(<fn>)",
                 },
             )
             .finish()
@@ -46,7 +44,7 @@ impl<H: Hasher> From<Topic<H>> for Subscription {
 /// A builder for a subscription.
 pub struct SubscriptionBuilder {
     topic: TopicHash,
-    message_id_fn: Option<Rc<MessageIdFn>>,
+    message_id_fn: Option<Rc<dyn MessageIdFn<Output = MessageId>>>,
 }
 
 impl SubscriptionBuilder {
@@ -64,11 +62,12 @@ impl SubscriptionBuilder {
     /// addressing, where this function may be set to `hash(message)`. This would prevent messages
     /// of the same content from being duplicated.
     ///
-    /// The function takes a [`FrameMessage`] as input and outputs a String to be interpreted as the
-    /// message id.
+    /// The function takes a [`MessageRef`](crate::message_id::MessageRef) and the message's
+    /// propagation peer id as inputs and outputs a byte array, [`MessageId`] to be interpreted as
+    /// the message id.
     pub fn message_id_fn<F>(&mut self, id_fn: F) -> &mut Self
     where
-        F: Fn(&FrameMessage) -> MessageId + Send + Sync + 'static,
+        F: MessageIdFn + Send + Sync + 'static,
     {
         self.message_id_fn = Some(Rc::new(id_fn));
         self
