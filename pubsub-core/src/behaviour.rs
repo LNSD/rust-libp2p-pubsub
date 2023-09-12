@@ -509,7 +509,7 @@ where
         // Poll the protocol service.
         while let Poll::Ready(event) = self.protocol_router_service.poll(cx) {
             match event {
-                ProtocolRouterOutEvent::ForwardMessageASSS { message, dest } => {
+                ProtocolRouterOutEvent::ForwardMessage { message, dest } => {
                     for dest in dest {
                         // Notify the framing service of the message to send.
                         self.framing_service.do_send(FramingInEvent::Downstream(

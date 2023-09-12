@@ -80,7 +80,7 @@ pub struct ProtocolRouterControlEvent {
 #[derive(Debug, Clone)]
 pub enum ProtocolRouterOutEvent {
     /// Forward the message to the given peers.
-    ForwardMessageASSS {
+    ForwardMessage {
         /// The destination peers.
         dest: Vec<PeerId>,
         /// The message.
