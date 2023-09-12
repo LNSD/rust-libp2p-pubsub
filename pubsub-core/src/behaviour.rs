@@ -664,9 +664,9 @@ impl From<ConnectionsOutEvent> for SubscriptionsPeerConnectionEvent {
 impl From<Message> for FrameMessage {
     fn from(message: Message) -> Self {
         let mut msg = Self::new(message.topic, message.data);
-        msg.set_sequence_number(message.sequence_number);
+        msg.set_seqno(message.sequence_number);
         msg.set_key(message.key);
-        msg.set_source(message.from);
+        msg.set_author(message.from);
         msg.set_signature(message.signature);
         msg
     }
@@ -677,10 +677,10 @@ impl From<FrameMessage> for Message {
         Self {
             topic: message.topic(),
             data: message.data().to_vec(),
-            sequence_number: message.sequence_number(),
-            key: message.key().map(ToOwned::to_owned),
-            from: message.source(),
-            signature: message.signature().map(ToOwned::to_owned),
+            sequence_number: message.seqno(),
+            key: message.key(),
+            from: message.author(),
+            signature: message.signature(),
         }
     }
 }

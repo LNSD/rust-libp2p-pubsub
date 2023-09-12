@@ -25,7 +25,7 @@ pub enum SubscriptionEvent {
         /// The subscribed topic.
         topic: TopicHash,
         /// The message id function.
-        message_id_fn: Option<Rc<MessageIdFn>>,
+        message_id_fn: Option<Rc<dyn MessageIdFn<Output = MessageId>>>,
     },
     /// The node unsubscribed from a topic.
     Unsubscribed(TopicHash),
