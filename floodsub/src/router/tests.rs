@@ -239,7 +239,7 @@ fn do_not_forward_messages_after_unsubscribing_a_topic() {
         1,
         "Only one message should be forwarded"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 1, "The message should be forwarded to 1 peer");
         assert!(dest.contains(&remote_peer), "The message should be forwarded to peer");
@@ -283,7 +283,7 @@ fn publish_a_message_to_all_peers_subscribed() {
         1,
         "A message should be forwarded to all peers subscribed"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 2, "The message should be forwarded to 2 peers");
         assert!(dest.contains(&remote_peer_a), "The message should be forwarded to peer A");
@@ -326,7 +326,7 @@ fn forward_a_message_to_all_peers_subscribed_except_the_sender() {
         1,
         "A message forward event should be emitted"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 2, "The message should be forwarded to 2 peers");
         assert!(dest.contains(&remote_peer_a), "The message should be forwarded to peer A");
@@ -378,7 +378,7 @@ fn topic_should_be_removed_from_routing_table_if_no_remaining_peers() {
         1,
         "Only one message should be forwarded"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 2, "The message should be forwarded to 2 peers");
         assert!(dest.contains(&remote_peer_a), "The message should be forwarded to peer A");
@@ -423,7 +423,7 @@ fn peer_should_be_removed_from_routing_table_on_unsubscription_received() {
         1,
         "A message forward event should be emitted"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 1, "The message should be forwarded to 1 peer");
         assert!(!dest.contains(&remote_peer_a), "The message should not be forwarded to peer A");
@@ -473,7 +473,7 @@ fn peer_should_be_removed_from_routing_table_on_disconnect() {
         2,
         "Two message forward event should be emitted"
     );
-    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[0], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 1, "The message should be forwarded to 1 peer");
         assert!(!dest.contains(&remote_peer_a), "The message should not be forwarded to peer A");
@@ -481,7 +481,7 @@ fn peer_should_be_removed_from_routing_table_on_disconnect() {
         // Assert message
         assert_eq!(&message.topic(), &topic_a, "The message should be on topic");
     });
-    assert_matches!(&output_events[1], ProtocolRouterOutEvent::ForwardMessage { dest, message } => {
+    assert_matches!(&output_events[1], ProtocolRouterOutEvent::ForwardMessageASSS { dest, message } => {
         // Assert dest nodes
         assert_eq!(dest.len(), 1, "The message should be forwarded to 1 peer");
         assert!(!dest.contains(&remote_peer_a), "The message should not be forwarded to peer A");

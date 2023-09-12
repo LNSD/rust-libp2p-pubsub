@@ -132,7 +132,7 @@ impl Service for Router {
                         return;
                     }
 
-                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessage {
+                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessageASSS {
                         dest: peers,
                         message,
                     });
@@ -149,7 +149,7 @@ impl Service for Router {
 
                 if let Some(peers) = self.get_peers_subscribed(&topic) {
                     let peers = peers.iter().cloned().collect::<Vec<_>>();
-                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessage {
+                    svc_cx.emit(ProtocolRouterOutEvent::ForwardMessageASSS {
                         dest: peers,
                         message,
                     });
