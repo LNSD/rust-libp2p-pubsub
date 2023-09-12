@@ -1,2 +1,24 @@
 ignore:
   - 'testlib'
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+  individual_components:
+    - component_id: pubsub-proto
+      paths:
+        - "pubsub-proto/**"
+    - component_id: pubsub-common
+      paths:
+        - "pubsub-common/**"
+    - component_id: pubsub-core
+      paths:
+        - "pubsub-core/**"
+    - component_id: floodsub
+      paths:
+        - "floodsub/**"
+    - component_id: meta
+      paths:
+        - "meta/**"
