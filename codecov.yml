@@ -8,22 +8,17 @@ component_management:
         target: auto
   individual_components:
     - component_id: pubsub-proto
-      name: libp2p-pubsub-proto
       paths:
         - "pubsub-proto/**"
     - component_id: pubsub-common
-      name: libp2p-pubsub-common
       paths:
         - "pubsub-common/**"
     - component_id: pubsub-core
-      name: libp2p-pubsub-core
       paths:
         - "pubsub-core/**"
     - component_id: floodsub
-      name: libp2p-pubsub-floodsub
       paths:
         - "floodsub/**"
     - component_id: meta
-      name: libp2p-pubsub
       paths:
         - "meta/**"
