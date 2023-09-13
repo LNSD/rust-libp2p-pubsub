@@ -24,28 +24,3 @@ pub trait OutCtx<'a> {
     /// Emits a batch of events to the output mailbox.
     fn emit_batch(&mut self, evs: impl IntoIterator<Item = Self::Event>);
 }
-
-/// A service context input and output mailbox handles.
-pub trait JointCtx<'a, InEvent, OutEvent> {
-    /// The input mailbox handle type.
-    type InHandle: InCtx<'a, Event = InEvent> + 'a;
-    /// The output mailbox handle type.
-    type OutHandle: OutCtx<'a, Event = OutEvent> + 'a;
-
-    /// Split this context into its input and output mailbox context handles.
-    fn split(self) -> (Self::InHandle, Self::OutHandle);
-}
-
-// NOTE: Use `trait_set` crate as `trait_alias` is not yet stable.
-//       https://github.com/rust-lang/rust/issues/41517
-trait_set::trait_set! {
-    /// A service context mailbox handle for the
-    /// [`Service::on_event`](super::service_trait::Service::on_event) method.
-    pub trait OnEventCtx<'a, OutEvent> = OutCtx<'a, Event = OutEvent>;
-
-    /// A service context mailbox handle for the
-    /// [`Service::poll`](super::service_trait::Service::poll) method.
-    pub trait PollCtx<'a, InEvent, OutEvent> = JointCtx<'a, InEvent, OutEvent>
-        + InCtx<'a, Event = InEvent>
-        + OutCtx<'a, Event = OutEvent>;
-}

@@ -13,12 +13,12 @@
 
 pub use buffered_context::BufferedContext;
 pub use context::ServiceContext;
-pub use context_handles::{InCtx, JointCtx, OnEventCtx, OutCtx, PollCtx};
-pub use event_handler::EventHandler;
-pub use service_trait::{InEvent, OutEvent, Service};
+pub use context_handles::{InCtx, OutCtx};
+pub use event_handler_trait::{EventHandler, OnEventCtx};
+pub use service_trait::{InEvent, JointCtx, OutEvent, PollCtx, Service};
 
 mod buffered_context;
 mod context;
 mod context_handles;
-mod event_handler;
+mod event_handler_trait;
 mod service_trait;
