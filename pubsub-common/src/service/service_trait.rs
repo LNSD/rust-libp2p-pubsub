@@ -24,8 +24,9 @@ pub trait Service: 'static {
 
     /// Handle an input event.
     ///
-    /// To emit an event, enqueueing it into the output mailbox, use the [`OnEventCtx::emit`]
-    /// method. To emit a batch of events, use the [`OnEventCtx::emit_batch`] method.
+    /// To emit an event, enqueueing it into the output mailbox, use the
+    /// [`emit`](super::context_handles::OutCtx::emit) method. To emit a batch of events, use the
+    /// [`emit_batch`](super::context_handles::OutCtx::emit_batch) method.
     ///
     /// ```ignore
     /// use libp2p_pubsub_common::service::Service;
@@ -54,14 +55,17 @@ pub trait Service: 'static {
     ///
     /// There are different ways to access the service context input mailbox events:
     ///
-    ///  - Using the [`PollCtx::len`] and [`PollCtx::is_empty`] methods to check if there are any
+    ///  - Using the [`len`](super::context_handles::InCtx::len) and
+    ///    [`is_empty`](super::context_handles::InCtx::is_empty) methods to check if there are any
     ///    events in the input mailbox. This can be useful to apply backpressure to the upstream
     ///    service.
-    ///  - Using the [`PollCtx::pop_next`] method to pop the next event from the input mailbox.
+    ///  - Using the [`pop_next`](super::context_handles::InCtx::pop_next) method to pop the next
+    ///    event from the input mailbox.
     ///
     /// On the other hand, to emit an event, one can use one of the following methods:
-    ///  - Using the the [`PollCtx::emit`] to enqueue an event to the output mailbox. Or using the
-    ///    [`PollCtx::emit_batch`] method to enqueue a batch of events.
+    ///  - Using the the [`emit`](super::context_handles::OutCtx::emit) to enqueue an event to the
+    ///    output mailbox. Or using the [`emit_batch`](super::context_handles::OutCtx::emit_batch)
+    ///    method to enqueue a batch of events.
     ///  - Returning a `Poll::Ready(event)` to skip the output mailbox and return the event
     ///    directly to the downstream service.
     ///
