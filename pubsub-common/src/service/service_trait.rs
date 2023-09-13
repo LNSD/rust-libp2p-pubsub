@@ -36,7 +36,7 @@ pub trait Service: 'static {
     ///     type InEvent = MyInEvent;
     ///     type OutEvent = MyOutEvent;
     ///
-    ///     fn on_event(&mut self, scv_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    ///     fn on_event<'a>(&mut self, scv_cx: &mut impl OnEventCtx<'a, Self::OutEvent>, ev: Self::InEvent) {
     ///         // ...
     ///         scv_cx.emit(event);                  // Emit an event.
     ///         scv_cx.emit_batch([event1, event2]); // Emit a batch of events.
@@ -77,7 +77,7 @@ pub trait Service: 'static {
     ///     type InEvent = MyInEvent;
     ///     type OutEvent = MyOutEvent;
     ///
-    ///     fn poll(&mut self, scv_cx: &mut PollCtx<'_, Self::InEvent, Self::OutEvent>, cx: &mut Context<'_>) {
+    ///     fn poll<'a>(&mut self, scv_cx: impl PollCtx<'a, Self::InEvent, Self::OutEvent>, cx: &mut Context<'_>) {
     ///         // ...
     ///         scv_cx.emit(event);                  // Emit an event.
     ///         scv_cx.emit_batch([event1, event2]); // Emit a batch of events.
