@@ -39,10 +39,12 @@ pub trait JointCtx<'a, InEvent, OutEvent> {
 // NOTE: Use `trait_set` crate as `trait_alias` is not yet stable.
 //       https://github.com/rust-lang/rust/issues/41517
 trait_set::trait_set! {
-    /// A service context mailbox handle for the [`Service::on_event`](super::Service::on_event) method.
+    /// A service context mailbox handle for the
+    /// [`Service::on_event`](super::service_trait::Service::on_event) method.
     pub trait OnEventCtx<'a, OutEvent> = OutCtx<'a, Event = OutEvent>;
 
-    /// A service context mailbox handle for the [`Service::poll`](super::Service::poll) method.
+    /// A service context mailbox handle for the
+    /// [`Service::poll`](super::service_trait::Service::poll) method.
     pub trait PollCtx<'a, InEvent, OutEvent> = JointCtx<'a, InEvent, OutEvent>
         + InCtx<'a, Event = InEvent>
         + OutCtx<'a, Event = OutEvent>;
