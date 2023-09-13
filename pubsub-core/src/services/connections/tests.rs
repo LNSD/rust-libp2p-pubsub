@@ -91,7 +91,7 @@ fn new_connection_closed_seq(
 #[test]
 fn new_inbound_connection_established() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let local_addr = new_test_multiaddr();
     let remote_addr = new_test_multiaddr();
@@ -130,7 +130,7 @@ fn new_inbound_connection_established() {
 #[test]
 fn new_outbound_connection_established() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let remote_addr = new_test_multiaddr();
     let remote_peer_id = new_test_peer_id();
@@ -167,7 +167,7 @@ fn new_outbound_connection_established() {
 #[test]
 fn emit_new_peer_connected_event_on_first_inbound_connection() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let local_addr = new_test_multiaddr();
     let remote_addr = new_test_multiaddr();
@@ -227,7 +227,7 @@ fn emit_new_peer_connected_event_on_first_inbound_connection() {
 #[test]
 fn emit_new_peer_connected_event_on_first_outbound_connection() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let remote_addr = new_test_multiaddr();
     let remote_peer_id = new_test_peer_id();
@@ -283,7 +283,7 @@ fn emit_new_peer_connected_event_on_first_outbound_connection() {
 #[test]
 fn should_not_peer_disconnected_event_if_remaining_connections() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let inbound_connection_id = new_test_connection_id();
     let outbound_connection_id = new_test_connection_id();
@@ -336,7 +336,7 @@ fn should_not_peer_disconnected_event_if_remaining_connections() {
 #[test]
 fn emit_peer_disconnected_event_when_no_remaining_connections() {
     //// Given
-    let mut service = testlib::service::default_test_service::<ConnectionsService>();
+    let mut service = testlib::service::default_test_event_handler::<ConnectionsService>();
 
     let inbound_connection_id = new_test_connection_id();
     let outbound_connection_id = new_test_connection_id();

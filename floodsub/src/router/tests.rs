@@ -106,7 +106,7 @@ fn do_not_forward_a_message_if_not_subscribed() {
 
     let remote_peer = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the subscription to Topic A and the remote peer subscription to topics A and B
     let input_events = itertools::chain!(
@@ -134,7 +134,7 @@ fn do_not_forward_a_message_if_no_peers_are_subscribed() {
     let topic = new_test_topic();
     let remote_peer = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the subscription to topic
     let input_events = new_subscribe_seq(topic.clone());
@@ -158,7 +158,7 @@ fn do_not_forward_a_message_if_sender_is_the_only_peer_subscribed() {
     let topic = new_test_topic();
     let remote_peer = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the subscription to topic
     let input_events = itertools::chain!(
@@ -184,7 +184,7 @@ fn do_not_forward_a_published_message_if_no_peers_are_subscribed() {
     //// Given
     let topic = new_test_topic();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the subscription to topic
     let input_events = new_subscribe_seq(topic.clone());
@@ -209,7 +209,7 @@ fn do_not_forward_messages_after_unsubscribing_a_topic() {
     let topic_b = new_test_topic();
     let remote_peer = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the subscription to topic
     let input_events = itertools::chain!(
@@ -257,7 +257,7 @@ fn publish_a_message_to_all_peers_subscribed() {
     let remote_peer_b = new_test_peer_id();
     let remote_peer_c = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the local node and peers subscriptions
     let input_events = itertools::chain!(
@@ -301,7 +301,7 @@ fn forward_a_message_to_all_peers_subscribed_except_the_sender() {
     let remote_peer_b = new_test_peer_id();
     let remote_peer_c = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the local node and peers subscriptions
     let input_events = itertools::chain!(
@@ -345,7 +345,7 @@ fn topic_should_be_removed_from_routing_table_if_no_remaining_peers() {
     let remote_peer_a = new_test_peer_id();
     let remote_peer_b = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the local node and peers subscriptions
     let input_events = itertools::chain!(
@@ -395,7 +395,7 @@ fn peer_should_be_removed_from_routing_table_on_unsubscription_received() {
     let remote_peer_a = new_test_peer_id();
     let remote_peer_b = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the local node and peers subscriptions
     let input_events = itertools::chain!(
@@ -441,7 +441,7 @@ fn peer_should_be_removed_from_routing_table_on_disconnect() {
     let remote_peer_a = new_test_peer_id();
     let remote_peer_b = new_test_peer_id();
 
-    let mut service = testlib::service::default_test_service::<Router>();
+    let mut service = testlib::service::default_test_event_handler::<Router>();
 
     // Simulate the local node and peers subscriptions
     let input_events = itertools::chain!(

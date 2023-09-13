@@ -4,7 +4,7 @@ use libp2p::identity::PeerId;
 use libp2p::swarm::ConnectionId;
 use libp2p::Multiaddr;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 
 use super::connection::{Connection, ConnectionState};
 use super::events::{ServiceIn, ServiceOut, SwarmEvent};
@@ -170,7 +170,7 @@ impl ConnectionsService {
     }
 }
 
-impl Service for ConnectionsService {
+impl EventHandler for ConnectionsService {
     type InEvent = ServiceIn;
     type OutEvent = ServiceOut;
 

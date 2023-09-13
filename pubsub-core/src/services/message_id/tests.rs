@@ -6,7 +6,7 @@ use libp2p::PeerId;
 use rand::random;
 use sha2::{Digest, Sha256};
 
-use libp2p_pubsub_common::service::BufferedContext;
+use libp2p_pubsub_common::service::{BufferedContext, ServiceWrapper};
 use testlib::service::noop_context;
 
 use crate::framing::Message;
@@ -18,7 +18,7 @@ use super::events::{MessageEvent, ServiceIn as MessageIdInEvent, SubscriptionEve
 use super::service::MessageIdService;
 
 // Create a test instance of the service under test.
-fn new_test_service() -> BufferedContext<MessageIdService> {
+fn new_test_service() -> BufferedContext<ServiceWrapper<MessageIdService>> {
     Default::default()
 }
 

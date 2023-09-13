@@ -76,7 +76,7 @@ fn new_peer_unsubscribe_seq<H: Hasher>(
 #[test]
 fn register_non_existing_topic_subscription() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let topic_a = new_test_topic();
 
@@ -107,7 +107,7 @@ fn register_non_existing_topic_subscription() {
 #[test]
 fn register_existing_topic_subscription() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let topic_a = new_test_topic();
 
@@ -140,7 +140,7 @@ fn register_existing_topic_subscription() {
 #[test]
 fn unregister_non_existing_topic_subscription() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let topic_a = new_test_topic();
     let topic_b = new_test_topic();
@@ -174,7 +174,7 @@ fn unregister_non_existing_topic_subscription() {
 #[test]
 fn unregister_existing_topic_subscription() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let topic_a = new_test_topic();
     let topic_b = new_test_topic();
@@ -214,7 +214,7 @@ fn unregister_existing_topic_subscription() {
 #[test]
 fn emit_send_subscriptions_on_new_peer_connected() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let peer_a = new_test_peer_id();
     let peer_b = new_test_peer_id();
@@ -263,7 +263,7 @@ fn emit_send_subscriptions_on_new_peer_connected() {
 #[test]
 fn dont_emit_send_subscriptions_on_new_peer_connected_if_no_subscriptions() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let peer_a = new_test_peer_id();
     let peer_b = new_test_peer_id();
@@ -285,7 +285,7 @@ fn dont_emit_send_subscriptions_on_new_peer_connected_if_no_subscriptions() {
 #[test]
 fn register_peer_subscription_to_topic_when_not_registered() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let remote_peer = new_test_peer_id();
     let topic_a = new_test_topic();
@@ -333,7 +333,7 @@ fn register_peer_subscription_to_topic_when_not_registered() {
 #[test]
 fn register_peer_subscription_to_topic_when_already_registered() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let remote_peer = new_test_peer_id();
     let topic_a = new_test_topic();
@@ -364,7 +364,7 @@ fn register_peer_subscription_to_topic_when_already_registered() {
 #[test]
 fn unregister_peer_subscription_to_topic_when_not_registered() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let remote_peer = new_test_peer_id();
     let topic_a = new_test_topic();
@@ -393,7 +393,7 @@ fn unregister_peer_subscription_to_topic_when_not_registered() {
 #[test]
 fn unregister_peer_subscription_to_topic_when_registered() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let remote_peer = new_test_peer_id();
     let topic_a = new_test_topic();
@@ -446,7 +446,7 @@ fn unregister_peer_subscription_to_topic_when_registered() {
 #[test]
 fn remove_all_peer_subscriptions_on_peer_disconnected() {
     //// Given
-    let mut service = testlib::service::default_test_service::<SubscriptionsService>();
+    let mut service = testlib::service::default_test_event_handler::<SubscriptionsService>();
 
     let remote_peer = new_test_peer_id();
     let topic_a = new_test_topic();

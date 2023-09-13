@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use libp2p::PeerId;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 
 use crate::framing::SubscriptionAction;
 use crate::services::subscriptions::SubscriptionsPeerConnectionEvent;
@@ -96,7 +96,7 @@ impl SubscriptionsService {
     }
 }
 
-impl Service for SubscriptionsService {
+impl EventHandler for SubscriptionsService {
     type InEvent = ServiceIn;
     type OutEvent = ServiceOut;
 

@@ -4,7 +4,7 @@ use bytes::Bytes;
 use libp2p::identity::PeerId;
 use prost::Message as _;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 use libp2p_pubsub_proto::pubsub::{
     ControlMessageProto, FrameProto as RawFrame, MessageProto, SubOptsProto,
 };
@@ -142,7 +142,7 @@ fn process_raw_frame_control_messages(
     })
 }
 
-impl Service for UpstreamFramingService {
+impl EventHandler for UpstreamFramingService {
     type InEvent = UpstreamInEvent;
     type OutEvent = UpstreamOutEvent;
 

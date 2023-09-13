@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 
 use crate::message_id::{default_message_id_fn, MessageId, MessageIdFn};
 use crate::topic::TopicHash;
@@ -22,7 +22,7 @@ pub struct MessageIdService {
     message_id_fn: HashMap<TopicHash, Rc<dyn MessageIdFn<Output = MessageId>>>,
 }
 
-impl Service for MessageIdService {
+impl EventHandler for MessageIdService {
     type InEvent = ServiceIn;
     type OutEvent = ServiceOut;
 

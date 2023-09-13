@@ -1,7 +1,7 @@
 use bytes::{Bytes, BytesMut};
 use prost::Message;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 use libp2p_pubsub_proto::pubsub::FrameProto;
 
 use crate::framing::Frame;
@@ -24,7 +24,7 @@ fn encode_frame(frame: impl Into<FrameProto>) -> Bytes {
     bytes.freeze()
 }
 
-impl Service for DownstreamFramingService {
+impl EventHandler for DownstreamFramingService {
     type InEvent = DownstreamInEvent;
     type OutEvent = DownstreamOutEvent;
 
