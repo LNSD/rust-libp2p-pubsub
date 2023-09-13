@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use libp2p::identity::PeerId;
 
-use libp2p_pubsub_common::service::{OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 use libp2p_pubsub_core::protocol::{
     ProtocolRouterConnectionEvent, ProtocolRouterInEvent, ProtocolRouterMessageEvent,
     ProtocolRouterOutEvent, ProtocolRouterSubscriptionEvent,
@@ -87,7 +87,7 @@ impl Router {
     }
 }
 
-impl Service for Router {
+impl EventHandler for Router {
     type InEvent = ProtocolRouterInEvent;
     type OutEvent = ProtocolRouterOutEvent;
 

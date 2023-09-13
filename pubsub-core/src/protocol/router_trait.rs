@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use libp2p::PeerId;
 
-use libp2p_pubsub_common::service::Service;
+use libp2p_pubsub_common::service::EventHandler;
 
 use crate::framing::{ControlMessage, Message as FrameMessage};
 use crate::message_id::MessageId;
@@ -104,5 +104,5 @@ trait_set::trait_set! {
     /// to the appropriate peers.
     ///
     /// It handles the [`ProtocolRouterInEvent`] and generates [`ProtocolRouterOutEvent`] events.
-    pub trait ProtocolRouter = Service<InEvent = ProtocolRouterInEvent, OutEvent = ProtocolRouterOutEvent>;
+    pub trait ProtocolRouter = EventHandler<InEvent = ProtocolRouterInEvent, OutEvent = ProtocolRouterOutEvent>;
 }
