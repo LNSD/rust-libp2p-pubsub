@@ -35,26 +35,8 @@ impl<'a, OutEvent> OutCtx<'a> for &'a mut VecDeque<OutEvent> {
 }
 
 /// A service context mailbox handle implementation for the
-/// [`Service::on_event`](super::service_trait""Service::on_event) method.
-pub struct BufferedOnEventCtx<'a, OutEvent> {
-    outbox: &'a mut VecDeque<OutEvent>,
-}
-
-impl<'a, OutEvent> OutCtx<'a> for BufferedOnEventCtx<'a, OutEvent> {
-    type Event = OutEvent;
-
-    fn emit(&mut self, ev: Self::Event) {
-        self.outbox.push_back(ev);
-    }
-
-    fn emit_batch(&mut self, evs: impl IntoIterator<Item = Self::Event>) {
-        self.outbox.extend(evs);
-    }
-}
-
-/// A service context mailbox handle implementation for the
 /// [`Service::poll`](super::service_trait::Service::poll) method.
-pub struct BufferedPollCtx<'a, InEvent, OutEvent> {
+struct BufferedPollCtx<'a, InEvent, OutEvent> {
     inbox: &'a mut VecDeque<InEvent>,
     outbox: &'a mut VecDeque<OutEvent>,
 }
