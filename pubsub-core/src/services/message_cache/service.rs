@@ -4,7 +4,7 @@ use std::time::Duration;
 use futures::StreamExt;
 
 use libp2p_pubsub_common::heartbeat::Heartbeat;
-use libp2p_pubsub_common::service::{PollCtx, Service};
+use libp2p_pubsub_common::service::{InCtx, PollCtx, Service};
 use libp2p_pubsub_common::ttl_cache::Cache;
 
 use crate::message_id::MessageId;
@@ -60,9 +60,9 @@ impl Service for MessageCacheService {
     type InEvent = ServiceIn;
     type OutEvent = ();
 
-    fn poll(
+    fn poll<'a>(
         &mut self,
-        svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        svc_cx: impl PollCtx<'a, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
         let (mut in_cx, _out_cx) = svc_cx.split();

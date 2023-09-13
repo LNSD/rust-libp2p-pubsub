@@ -30,7 +30,11 @@ impl Service for NoopProtocolRouter {
     type InEvent = ProtocolRouterInEvent;
     type OutEvent = ProtocolRouterOutEvent;
 
-    fn on_event(&mut self, _svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, _ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        _svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        _ev: Self::InEvent,
+    ) {
         // No-op
     }
 }

@@ -11,10 +11,12 @@
 //! See [`Service`](service::Service) and [`ServiceContext`](service::ServiceContext) documentation
 //! for more details.
 
-pub use context::{BufferedContext, ServiceContext};
-pub use context_handles::{OnEventCtx, PollCtx};
+pub use buffered_context::BufferedContext;
+pub use context::ServiceContext;
+pub use context_handles::{InCtx, JointCtx, OnEventCtx, OutCtx, PollCtx};
 pub use service_trait::{InEvent, OutEvent, Service};
 
+mod buffered_context;
 mod context;
 mod context_handles;
 mod service_trait;

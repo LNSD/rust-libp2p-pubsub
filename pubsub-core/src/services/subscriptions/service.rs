@@ -100,7 +100,11 @@ impl Service for SubscriptionsService {
     type InEvent = ServiceIn;
     type OutEvent = ServiceOut;
 
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
         match ev {
             ServiceIn::SubscriptionRequest(sub) => {
                 // Emit a [`SubscriptionsOutEvent::Subscribed`] event if the node was not already

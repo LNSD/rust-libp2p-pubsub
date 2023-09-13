@@ -28,7 +28,11 @@ impl Service for DownstreamFramingService {
     type InEvent = DownstreamInEvent;
     type OutEvent = DownstreamOutEvent;
 
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
         match ev {
             DownstreamInEvent::ForwardMessage { dest, message } => {
                 // Create a new frame with the message, encode it and send it to the destination
