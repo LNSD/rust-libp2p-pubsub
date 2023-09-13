@@ -34,7 +34,8 @@ impl<'a, OutEvent> OutCtx<'a> for &'a mut VecDeque<OutEvent> {
     }
 }
 
-/// A service context mailbox handle for the [`Service::on_event`](super::Service::on_event) method.
+/// A service context mailbox handle implementation for the
+/// [`Service::on_event`](super::service_trait""Service::on_event) method.
 pub struct BufferedOnEventCtx<'a, OutEvent> {
     outbox: &'a mut VecDeque<OutEvent>,
 }
@@ -51,7 +52,8 @@ impl<'a, OutEvent> OutCtx<'a> for BufferedOnEventCtx<'a, OutEvent> {
     }
 }
 
-/// A service context mailbox handle for the [`Service::poll`](super::Service::poll) method.
+/// A service context mailbox handle implementation for the
+/// [`Service::poll`](super::service_trait::Service::poll) method.
 pub struct BufferedPollCtx<'a, InEvent, OutEvent> {
     inbox: &'a mut VecDeque<InEvent>,
     outbox: &'a mut VecDeque<OutEvent>,
@@ -73,7 +75,6 @@ impl<'a, InEvent, OutEvent> JointCtx<'a, InEvent, OutEvent>
     type InHandle = &'a mut VecDeque<InEvent>;
     type OutHandle = &'a mut VecDeque<OutEvent>;
 
-    /// Split this context into its input and output mailbox context handles.
     fn split(self) -> (Self::InHandle, Self::OutHandle) {
         (self.inbox, self.outbox)
     }
@@ -82,17 +83,14 @@ impl<'a, InEvent, OutEvent> JointCtx<'a, InEvent, OutEvent>
 impl<'a, InEvent, OutEvent> InCtx<'a> for BufferedPollCtx<'a, InEvent, OutEvent> {
     type Event = InEvent;
 
-    /// Get the number of events in the input mailbox.
     fn len(&self) -> usize {
         self.inbox.len()
     }
 
-    /// Check if the input mailbox is empty.
     fn is_empty(&self) -> bool {
         self.inbox.is_empty()
     }
 
-    /// Pop the next event from the input mailbox.
     fn pop_next(&mut self) -> Option<Self::Event> {
         self.inbox.pop_front()
     }
@@ -101,12 +99,10 @@ impl<'a, InEvent, OutEvent> InCtx<'a> for BufferedPollCtx<'a, InEvent, OutEvent>
 impl<'a, InEvent, OutEvent> OutCtx<'a> for BufferedPollCtx<'a, InEvent, OutEvent> {
     type Event = OutEvent;
 
-    /// Emit an event to the output mailbox.
     fn emit(&mut self, ev: Self::Event) {
         self.outbox.push_back(ev);
     }
 
-    /// Emit a batch of events to the output mailbox.
     fn emit_batch(&mut self, evs: impl IntoIterator<Item = Self::Event>) {
         self.outbox.extend(evs);
     }
