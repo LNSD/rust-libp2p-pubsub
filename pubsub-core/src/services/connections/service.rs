@@ -175,7 +175,11 @@ impl Service for ConnectionsService {
     type OutEvent = ServiceOut;
 
     #[tracing::instrument(skip_all)]
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
         match ev {
             ServiceIn::EstablishedInboundConnection {
                 connection_id,

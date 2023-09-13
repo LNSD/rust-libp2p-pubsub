@@ -81,9 +81,9 @@ impl Service for Downstream {
     type InEvent = DownstreamIn;
     type OutEvent = Result<DownstreamOut, DownstreamError>;
 
-    fn poll(
+    fn poll<'a>(
         &mut self,
-        mut svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        mut svc_cx: impl PollCtx<'a, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
         // Process input events.

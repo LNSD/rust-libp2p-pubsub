@@ -146,7 +146,11 @@ impl Service for UpstreamFramingService {
     type InEvent = UpstreamInEvent;
     type OutEvent = UpstreamOutEvent;
 
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
         match ev {
             UpstreamInEvent::RawFrameReceived { src, frame } => {
                 // Decode the received frame.

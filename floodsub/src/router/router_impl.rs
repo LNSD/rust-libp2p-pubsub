@@ -91,7 +91,11 @@ impl Service for Router {
     type InEvent = ProtocolRouterInEvent;
     type OutEvent = ProtocolRouterOutEvent;
 
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
         match ev {
             ProtocolRouterInEvent::ConnectionEvent(conn_ev) => {
                 if let ProtocolRouterConnectionEvent::PeerDisconnected(peer) = conn_ev {

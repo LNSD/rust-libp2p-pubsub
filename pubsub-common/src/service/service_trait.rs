@@ -2,7 +2,7 @@
 
 use std::task::{Context, Poll};
 
-use crate::service::context_handles::{OnEventCtx, PollCtx};
+use super::context_handles::{InCtx, OnEventCtx, PollCtx};
 
 pub type InEvent<T> = <T as Service>::InEvent;
 pub type OutEvent<T> = <T as Service>::OutEvent;
@@ -43,7 +43,12 @@ pub trait Service: 'static {
     ///     }
     /// }
     ///```
-    fn on_event(&mut self, svc_cx: &mut OnEventCtx<'_, Self::OutEvent>, ev: Self::InEvent) {}
+    fn on_event<'a>(
+        &mut self,
+        svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>,
+        ev: Self::InEvent,
+    ) {
+    }
 
     /// Poll the service for events.
     ///
@@ -77,14 +82,14 @@ pub trait Service: 'static {
     ///     }
     /// }
     ///```
-    fn poll(
+    fn poll<'a>(
         &mut self,
-        svc_cx: PollCtx<'_, Self::InEvent, Self::OutEvent>,
+        svc_cx: impl PollCtx<'a, Self::InEvent, Self::OutEvent>,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent> {
         let (mut inbox_cx, outbox_cx) = svc_cx.split();
 
-        let mut on_event_cx = outbox_cx.into();
+        let mut on_event_cx = outbox_cx;
         while let Some(event) = inbox_cx.pop_next() {
             self.on_event(&mut on_event_cx, event);
         }
