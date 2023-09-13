@@ -1,4 +1,4 @@
-use libp2p_pubsub_common::service::{EventHandler, OnEventCtx, Service};
+use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};
 use libp2p_pubsub_core::protocol::{Protocol, ProtocolRouterInEvent, ProtocolRouterOutEvent};
 use libp2p_pubsub_core::upgrade::SimpleProtocolUpgrade;
 
