@@ -1,7 +1,15 @@
 use std::task::{Context, Poll};
 
-use super::context_handles::{InCtx, OnEventCtx, PollCtx};
-use super::service_trait::Service;
+use super::context_handles::{InCtx, OutCtx};
+use super::service_trait::{PollCtx, Service};
+
+// NOTE: Use `trait_set` crate as `trait_alias` is not yet stable.
+//       https://github.com/rust-lang/rust/issues/41517
+trait_set::trait_set! {
+    /// A service context mailbox handle for the
+    /// [`Service::on_event`](super::service_trait::Service::on_event) method.
+    pub trait OnEventCtx<'a, OutEvent> = OutCtx<'a, Event = OutEvent>;
+}
 
 /// A event handler is a stateful object that handle input events and emit output events.
 ///
@@ -20,9 +28,8 @@ pub trait EventHandler: 'static {
 
     /// Handle an input event.
     ///
-    /// To emit an event, enqueueing it into the output mailbox, use the
-    /// [`emit`](super::context_handles::OutCtx::emit) method. To emit a batch of events, use the
-    /// [`emit_batch`](super::context_handles::OutCtx::emit_batch) method.
+    /// To emit an event, enqueueing it into the output mailbox, use the [`emit`](OutCtx::emit)
+    /// method. To emit a batch of events, use the [`emit_batch`](OutCtx::emit_batch) method.
     ///
     /// ```ignore
     /// use libp2p_pubsub_common::service::{EventHandler, OnEventCtx};

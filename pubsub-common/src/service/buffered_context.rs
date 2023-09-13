@@ -1,10 +1,9 @@
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
-use crate::service::context_handles::{InCtx, JointCtx, OutCtx};
-
 use super::context::ServiceContext;
-use super::service_trait::Service;
+use super::context_handles::{InCtx, OutCtx};
+use super::service_trait::{JointCtx, Service};
 
 impl<'a, InEvent> InCtx<'a> for &'a mut VecDeque<InEvent> {
     type Event = InEvent;
