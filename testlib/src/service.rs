@@ -1,9 +1,7 @@
 use std::future::poll_fn;
 use std::task::{Context, Poll};
 
-use libp2p_pubsub_common::service::{
-    BufferedContext, EventHandler, Service, ServiceContext, ServiceWrapper,
-};
+use libp2p_pubsub_common::service::{BufferedContext, Service, ServiceContext};
 
 /// Create a No-op task `Context` for testing.
 ///
@@ -16,13 +14,6 @@ pub fn noop_context() -> Context<'static> {
 /// Convenience function to create a new `Service` with default values wrapped in a
 /// [`BufferedContext`] for testing purposes.
 pub fn default_test_service<S: Service + Default>() -> BufferedContext<S> {
-    BufferedContext::default()
-}
-
-/// Convenience function to create a new `EventHandler` with default values wrapped in a
-/// [`BufferedContext`] for testing purposes.
-pub fn default_test_event_handler<S: EventHandler + Default>() -> BufferedContext<ServiceWrapper<S>>
-{
     BufferedContext::default()
 }
 

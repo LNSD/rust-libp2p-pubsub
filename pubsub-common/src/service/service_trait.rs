@@ -10,7 +10,7 @@ pub type OutEvent<T> = <T as Service>::OutEvent;
 /// The service state can only be mutated by handling input events. The service can emit events
 /// either by enqueueing them into the output mailbox or by returning a `Poll::Ready` event.
 ///
-/// See [`poll`](#method.poll) method for more details.
+/// See [`Service::poll`] method for details.
 pub trait Service: 'static {
     /// The type of the service input events.
     type InEvent: 'static;

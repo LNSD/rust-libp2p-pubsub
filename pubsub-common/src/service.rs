@@ -14,7 +14,7 @@
 pub use buffered_context::BufferedContext;
 pub use context::ServiceContext;
 pub use context_handles::{InCtx, JointCtx, OnEventCtx, OutCtx, PollCtx};
-pub use event_handler::{wrap_handler, EventHandler, ServiceWrapper};
+pub use event_handler::EventHandler;
 pub use service_trait::{InEvent, OutEvent, Service};
 
 mod buffered_context;

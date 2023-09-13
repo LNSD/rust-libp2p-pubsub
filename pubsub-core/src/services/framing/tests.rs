@@ -67,7 +67,7 @@ mod upstream {
         let remote_peer = new_test_peer_id();
         let empty_frame = Frame::empty();
 
-        let mut service = testlib::service::default_test_event_handler::<UpstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
         //// When
         let input_events = new_raw_frame_received_seq(remote_peer, empty_frame);
@@ -88,7 +88,7 @@ mod upstream {
         let invalid_message = new_test_message(empty_topic);
         let frame = Frame::new_with_messages([invalid_message]);
 
-        let mut service = testlib::service::default_test_event_handler::<UpstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
         //// When
         let input_events = new_raw_frame_received_seq(remote_peer, frame);
@@ -109,7 +109,7 @@ mod upstream {
         let invalid_subscription_request = SubscriptionAction::Subscribe(empty_topic);
         let frame = Frame::new_with_subscriptions([invalid_subscription_request]);
 
-        let mut service = testlib::service::default_test_event_handler::<UpstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
         //// When
         let input_events = new_raw_frame_received_seq(remote_peer, frame);
@@ -134,7 +134,7 @@ mod upstream {
 
         let frame = Frame::new_with_messages([message_a.clone(), message_b.clone()]);
 
-        let mut service = testlib::service::default_test_event_handler::<UpstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
         //// When
         let input_events = new_raw_frame_received_seq(remote_peer, frame);
@@ -170,7 +170,7 @@ mod upstream {
             subscription_request_b.clone(),
         ]);
 
-        let mut service = testlib::service::default_test_event_handler::<UpstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<UpstreamFramingService>();
 
         //// When
         let input_events = new_raw_frame_received_seq(remote_peer, frame);
@@ -227,8 +227,7 @@ mod downstream {
         let topic = new_test_topic();
         let message = new_test_message(topic.clone());
 
-        let mut service =
-            testlib::service::default_test_event_handler::<DownstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<DownstreamFramingService>();
 
         //// When
         let input_events = new_forward_message_seq(remote_peer, message.clone());
@@ -261,8 +260,7 @@ mod downstream {
         let topic_b = new_test_topic();
         let topic_c = new_test_topic();
 
-        let mut service =
-            testlib::service::default_test_event_handler::<DownstreamFramingService>();
+        let mut service = testlib::service::default_test_service::<DownstreamFramingService>();
 
         //// When
         let input_events = new_send_subscription_request_seq(

@@ -14,9 +14,7 @@ use libp2p::swarm::{
 };
 use libp2p::Multiaddr;
 
-use libp2p_pubsub_common::service::{
-    wrap_handler, BufferedContext, ServiceContext, ServiceWrapper,
-};
+use libp2p_pubsub_common::service::{BufferedContext, ServiceContext};
 
 use crate::config::Config;
 use crate::conn_handler::{Command as HandlerCommand, Event as HandlerEvent, Handler};
@@ -53,19 +51,19 @@ pub struct Behaviour<P: Protocol> {
     config: Config,
 
     /// Peer connections tracking and management service.
-    connections_service: BufferedContext<ServiceWrapper<ConnectionsService>>,
+    connections_service: BufferedContext<ConnectionsService>,
 
     /// Peer subscriptions tracking and management service.
-    subscriptions_service: BufferedContext<ServiceWrapper<SubscriptionsService>>,
+    subscriptions_service: BufferedContext<SubscriptionsService>,
 
     /// Message ID service.
-    message_id_service: BufferedContext<ServiceWrapper<MessageIdService>>,
+    message_id_service: BufferedContext<MessageIdService>,
 
     /// Message cache and deduplication service.
     message_cache_service: BufferedContext<MessageCacheService>,
 
     /// The pubsub protocol router service.
-    protocol_router_service: BufferedContext<ServiceWrapper<P::RouterService>>,
+    protocol_router_service: BufferedContext<P::RouterService>,
 
     /// The frame encoder and decoder service.
     framing_service: FramingServiceContext,
@@ -92,7 +90,7 @@ impl<P: Protocol> Behaviour<P> {
             config.heartbeat_interval(),
             Duration::from_secs(0),
         ));
-        let protocol_router_service = BufferedContext::new(wrap_handler(protocol.router()));
+        let protocol_router_service = BufferedContext::new(protocol.router());
 
         Self {
             config,

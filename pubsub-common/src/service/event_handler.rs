@@ -5,14 +5,15 @@ use super::service_trait::Service;
 
 /// A event handler is a stateful object that handle input events and emit output events.
 ///
-/// The service state can only be mutated by handling input events. The service can emit events
-/// either by enqueueing them into the output mailbox.
+/// > **Note**: Any type implementing the [`EventHandler`] trait will implicitly implement the
+/// > [`Service`] trait as well. The event handler when polled will iterate and consume all the
+/// > input mailbox events and pass them to the [`EventHandler::on_event`] method.
 ///
-/// See [`on_event`](#method.on_event) method for more details.
+/// The state can only be mutated by handling input events. The service can emit events by
+/// enqueueing them into the output mailbox.
 ///
-/// This trait is a simplified version of the [`Service`] trait. This trait is a particular case of
-/// the [`Service`] trait where the service only handles input events and emits output events, but
-/// does not require to be polled.
+/// See [`on_event`](EventHandler::on_event) method for details.
+///
 pub trait EventHandler: 'static {
     type InEvent: 'static;
     type OutEvent: 'static;
@@ -41,42 +42,7 @@ pub trait EventHandler: 'static {
     fn on_event<'a>(&mut self, svc_cx: &mut impl OnEventCtx<'a, Self::OutEvent>, ev: Self::InEvent);
 }
 
-/// Service implementation that wraps an [`EventHandler`] and implements the [`Service`]
-/// trait.
-///
-/// The trait, when polled, iterates over the input mailbox events and calls the
-/// [`EventHandler::on_event`] method for each event.
-///
-/// > NOTE: Use [`wrap_handler`] to wrap a [`EventHandler`] and return a [`ServiceWrapper`] instance.o
-///>
-/// > ```ignore
-/// > let handler = MyHandler::new();  // Implements `EventHandler` trait.
-/// > let my_service: BufferedContext<ServiceWrapper<MyHandler>> = BufferedContext::new(wrap_handler(handler));
-/// > ```
-pub struct ServiceWrapper<H> {
-    inner: H,
-}
-
-impl<H> Default for ServiceWrapper<H>
-where
-    H: Default,
-{
-    fn default() -> Self {
-        Self {
-            inner: H::default(),
-        }
-    }
-}
-
-impl<H> std::ops::Deref for ServiceWrapper<H> {
-    type Target = H;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<H> Service for ServiceWrapper<H>
+impl<H> Service for H
 where
     H: EventHandler,
 {
@@ -92,13 +58,9 @@ where
 
         let mut on_event_cx = outbox_cx;
         while let Some(event) = inbox_cx.pop_next() {
-            self.inner.on_event(&mut on_event_cx, event);
+            self.on_event(&mut on_event_cx, event);
         }
 
         Poll::Pending
     }
-}
-
-pub fn wrap_handler<H: EventHandler>(handler: H) -> ServiceWrapper<H> {
-    ServiceWrapper { inner: handler }
 }
