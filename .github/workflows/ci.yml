@@ -105,14 +105,14 @@ jobs:
         run: cargo llvm-cov nextest r --test '*' --lcov --output-path it-lcov.info
 
       - name: Upload unit tests coverage report to codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: matrix.rust == 'stable'
         with:
           files: unit-lcov.info
           flags: unit
 
       - name: Upload integration tests coverage report to codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: matrix.rust == 'stable'
         with:
           files: it-lcov.info
