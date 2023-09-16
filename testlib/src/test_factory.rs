@@ -28,9 +28,7 @@ pub fn new_test_topic() -> IdentTopic {
 pub fn new_test_node(keypair: &Keypair) -> Swarm<Behaviour> {
     let peer_id = PeerId::from(keypair.public());
     let transport = transport::test_transport(keypair);
-    let config = Config::default();
-    let protocol = Default::default();
-    let behaviour = Behaviour::new(config.clone(), protocol);
+    let behaviour = Behaviour::new(Config::default(), Default::default());
     SwarmBuilder::with_executor(
         transport,
         behaviour,
