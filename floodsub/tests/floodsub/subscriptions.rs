@@ -1,43 +1,12 @@
-use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use libp2p::identity::{Keypair, PeerId};
-use libp2p::swarm::SwarmBuilder;
-use libp2p::Swarm;
-use rand::Rng;
 use tokio::time::timeout;
-use tracing_futures::Instrument;
 
-use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Config, IdentTopic};
-use libp2p_pubsub_floodsub::Protocol as Floodsub;
 use testlib::any_memory_addr;
 use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
-type Behaviour = PubsubBehaviour<Floodsub>;
-
-fn new_test_topic() -> IdentTopic {
-    IdentTopic::new(format!(
-        "/pubsub/2/it-pubsub-test-{}",
-        rand::thread_rng().gen::<u32>()
-    ))
-}
-
-fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
-    let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config, Default::default());
-    SwarmBuilder::with_executor(
-        transport,
-        behaviour,
-        peer_id,
-        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
-            tokio::spawn(fut.in_current_span());
-        },
-    )
-    .build()
-}
+use crate::flood_testlib::*;
 
 #[tokio::test]
 async fn node_should_subscribe_to_topic() {
@@ -49,7 +18,7 @@ async fn node_should_subscribe_to_topic() {
 
     let node_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
 
-    let mut node = new_test_node(&node_key, Default::default());
+    let mut node = new_test_node(&node_key);
 
     //// When
     node.behaviour_mut()
@@ -93,7 +62,7 @@ async fn node_should_unsubscribe_from_topic() {
 
     let node_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
 
-    let mut node = new_test_node(&node_key, Default::default());
+    let mut node = new_test_node(&node_key);
 
     // Subscribe to the test topics
     node.behaviour_mut()
@@ -155,10 +124,10 @@ async fn send_subscriptions_on_connection_established() {
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
-    let mut node_a = new_test_node(&node_a_key, Default::default());
+    let mut node_a = new_test_node(&node_a_key);
     testlib::swarm::should_listen_on_address(&mut node_a, any_memory_addr());
 
-    let mut node_b = new_test_node(&node_b_key, Default::default());
+    let mut node_b = new_test_node(&node_b_key);
     testlib::swarm::should_listen_on_address(&mut node_b, any_memory_addr());
 
     let (node_a_addr, _node_b_addr) = timeout(
@@ -235,10 +204,10 @@ async fn send_subscriptions_on_subscribe() {
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
-    let mut node_a = new_test_node(&node_a_key, Default::default());
+    let mut node_a = new_test_node(&node_a_key);
     testlib::swarm::should_listen_on_address(&mut node_a, any_memory_addr());
 
-    let mut node_b = new_test_node(&node_b_key, Default::default());
+    let mut node_b = new_test_node(&node_b_key);
     testlib::swarm::should_listen_on_address(&mut node_b, any_memory_addr());
 
     let (node_a_addr, _node_b_addr) = timeout(
@@ -294,10 +263,10 @@ async fn send_subscriptions_on_unsubscribe() {
     let node_a_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let node_b_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
-    let mut node_a = new_test_node(&node_a_key, Default::default());
+    let mut node_a = new_test_node(&node_a_key);
     testlib::swarm::should_listen_on_address(&mut node_a, any_memory_addr());
 
-    let mut node_b = new_test_node(&node_b_key, Default::default());
+    let mut node_b = new_test_node(&node_b_key);
     testlib::swarm::should_listen_on_address(&mut node_b, any_memory_addr());
 
     let (node_a_addr, _node_b_addr) = timeout(
