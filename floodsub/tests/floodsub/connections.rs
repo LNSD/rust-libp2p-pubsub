@@ -2,7 +2,7 @@ use std::time::Duration;
 use testlib::any_memory_addr;
 use tokio::time::timeout;
 
-use testlib::test_factory::*;
+use crate::floodsub::flood_testlib::*;
 
 #[tokio::test]
 async fn connection_is_established() {

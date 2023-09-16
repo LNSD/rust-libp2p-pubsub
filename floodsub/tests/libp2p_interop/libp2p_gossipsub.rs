@@ -14,21 +14,45 @@ use libp2p::gossipsub::{
 };
 use libp2p::identity::{Keypair, PeerId};
 use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
+use rand::Rng;
 use tokio::time::timeout;
 use tracing_futures::Instrument;
 use void::Void;
 
-use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Event, Message};
+use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Config, Event, IdentTopic, Message};
 use libp2p_pubsub_floodsub::Protocol as Floodsub;
 use testlib::any_memory_addr;
 use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 type Behaviour = PubsubBehaviour<Floodsub>;
-use testlib::test_factory::*;
+
+/// Create a new test topic with a random name.
+fn new_test_topic() -> IdentTopic {
+    IdentTopic::new(format!(
+        "/pubsub/2/it-pubsub-test-{}",
+        rand::thread_rng().gen::<u32>()
+    ))
+}
 
 /// Create a new test topic from a given string..
 fn new_libp2p_topic(raw: &str) -> Libp2pGossipsubIdentTopic {
     Libp2pGossipsubIdentTopic::new(raw)
+}
+
+/// Create a new test node with the given keypair and config.
+fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
+    let peer_id = PeerId::from(keypair.public());
+    let transport = testlib::test_transport(keypair);
+    let behaviour = Behaviour::new(config, Default::default());
+    SwarmBuilder::with_executor(
+        transport,
+        behaviour,
+        peer_id,
+        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
+            tokio::spawn(fut.in_current_span());
+        },
+    )
+    .build()
 }
 
 /// Create a new libp2p gossipsub test node with the given keypair and config.
@@ -134,13 +158,14 @@ async fn floodsub_node_publish_and_gossipsub_node_subscribes() {
     let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
+    let publisher_config = Config::default();
     let subscriber_config = Libp2pGossipsubConfigBuilder::default()
         .validation_mode(Libp2pGossipsubValidationMode::Permissive)
         .support_floodsub()
         .build()
         .expect("valid gossipsub configuration");
 
-    let mut publisher = new_test_node(&publisher_key);
+    let mut publisher = new_test_node(&publisher_key, publisher_config.clone());
     testlib::swarm::should_listen_on_address(&mut publisher, any_memory_addr());
 
     let mut libp2p_subscriber = new_libp2p_gossipsub_node(
@@ -238,6 +263,7 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
         .support_floodsub()
         .build()
         .expect("valid gossipsub configuration");
+    let subscriber_config = Config::default();
 
     let mut libp2p_publisher = new_libp2p_gossipsub_node(
         &subscriber_key,
@@ -246,7 +272,7 @@ async fn gossipsub_node_publish_and_floodsub_node_subscribes() {
     );
     testlib::swarm::should_listen_on_address(&mut libp2p_publisher, any_memory_addr());
 
-    let mut subscriber = new_test_node(&publisher_key);
+    let mut subscriber = new_test_node(&publisher_key, subscriber_config.clone());
     testlib::swarm::should_listen_on_address(&mut subscriber, any_memory_addr());
 
     let (libp2p_publisher_addr, _subscriber_addr) = timeout(
