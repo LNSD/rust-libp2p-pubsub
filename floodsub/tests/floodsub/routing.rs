@@ -1,47 +1,18 @@
-use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use libp2p::identity::{Keypair, PeerId};
-use libp2p::swarm::{SwarmBuilder, SwarmEvent};
+use libp2p::swarm::SwarmEvent;
 use libp2p::Swarm;
-use rand::Rng;
 use tokio::time::timeout;
-use tracing_futures::Instrument;
 
-use libp2p_pubsub_core::{
-    Behaviour as PubsubBehaviour, Config, Event, Hasher, IdentTopic, Message, Topic,
-};
+use libp2p_pubsub_core::{Behaviour as PubsubBehaviour, Event, Hasher, Message, Topic};
 use libp2p_pubsub_floodsub::Protocol as Floodsub;
 use testlib::any_memory_addr;
 use testlib::keys::{TEST_KEYPAIR_A, TEST_KEYPAIR_B};
 
 type Behaviour = PubsubBehaviour<Floodsub>;
 
-/// Create a new test topic with a random name.
-fn new_test_topic() -> IdentTopic {
-    IdentTopic::new(format!(
-        "/pubsub/2/it-pubsub-test-{}",
-        rand::thread_rng().gen::<u32>()
-    ))
-}
-
-/// Create a new test node with the given keypair and config.
-fn new_test_node(keypair: &Keypair, config: Config) -> Swarm<Behaviour> {
-    let peer_id = PeerId::from(keypair.public());
-    let transport = testlib::test_transport(keypair);
-    let behaviour = Behaviour::new(config, Default::default());
-    SwarmBuilder::with_executor(
-        transport,
-        behaviour,
-        peer_id,
-        |fut: Pin<Box<dyn Future<Output = ()> + Send>>| {
-            tokio::spawn(fut.in_current_span());
-        },
-    )
-    .build()
-}
+use crate::flood_testlib::*;
 
 /// Subscribe to a topic and assert that the subscription is successful.
 #[tracing::instrument(skip_all, fields(swarm = % swarm.local_peer_id()))]
@@ -74,13 +45,11 @@ async fn publish_to_topic() {
     let publisher_key = testlib::secp256k1_keypair(TEST_KEYPAIR_A);
     let subscriber_key = testlib::secp256k1_keypair(TEST_KEYPAIR_B);
 
-    let pubsub_config = Config::default();
-
     //// Setup
-    let mut publisher = new_test_node(&publisher_key, pubsub_config.clone());
+    let mut publisher = new_test_node(&publisher_key);
     testlib::swarm::should_listen_on_address(&mut publisher, any_memory_addr());
 
-    let mut subscriber = new_test_node(&subscriber_key, pubsub_config.clone());
+    let mut subscriber = new_test_node(&subscriber_key);
     testlib::swarm::should_listen_on_address(&mut subscriber, any_memory_addr());
 
     let (publisher_addr, _subscriber_addr) = timeout(
