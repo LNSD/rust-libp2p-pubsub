@@ -67,6 +67,7 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-nextest
+          version: 0.9.57  # MSRV: 1.66
 
       - name: Cargo check
         run: cargo check --all-targets --all-features
