@@ -18,5 +18,5 @@ trait-set = "0.3.0"
 
 [dev-dependencies]
 assert_matches.workspace = true
-sha2 = "0.10.7"
+sha2 = "0.10.8"
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
