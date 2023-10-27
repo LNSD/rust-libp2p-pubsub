@@ -39,10 +39,10 @@ impl Codec {
 }
 
 impl Encoder for Codec {
-    type Item = Bytes;
+    type Item<'a> = Bytes;
     type Error = Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Self::Item<'_>, dst: &mut BytesMut) -> Result<(), Self::Error> {
         self.uvi
             .encode(item, dst)
             .map_err(|_| Error::MaxMessageLenExceeded)
