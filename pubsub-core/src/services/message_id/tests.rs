@@ -169,8 +169,8 @@ fn subscribed_topic_message_uses_default_message_id_fn() {
     });
 }
 
-//// When the node subscribes to a topic and provides a custom message ID function, the custom
-//// message ID function should be used.
+/// When the node subscribes to a topic and provides a custom message ID function, the custom
+/// message ID function should be used.
 #[test]
 fn subscribed_topic_message_uses_configured_custom_message_id_fn() {
     //// Given
