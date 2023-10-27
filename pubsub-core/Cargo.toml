@@ -12,7 +12,7 @@ readme = "../meta/README.md"
 [dependencies]
 anyhow = "1.0.75"
 asynchronous-codec = "0.6.2"
-base64 = "0.21.4"
+base64 = "0.21.5"
 bytes.workspace = true
 futures.workspace = true
 hex_fmt = "0.3.0"
