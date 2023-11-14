@@ -19,7 +19,7 @@ tracing.workspace = true
 assert_matches.workspace = true
 testlib = { version = "0.1.0", path = "../testlib" }
 futures.workspace = true
-itertools = "0.11.0"
+itertools = "0.12.0"
 libp2p = { workspace = true, features = ["gossipsub", "floodsub", "tokio", "yamux", "plaintext", "secp256k1", "tcp", "dns"] }
 rand = "0.8.5"
 tokio = { workspace = true, features = ["rt", "macros"] }
