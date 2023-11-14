@@ -1091,6 +1091,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1377,7 +1386,7 @@ dependencies = [
  "bytes",
  "futures",
  "hex_fmt",
- "itertools",
+ "itertools 0.12.0",
  "libp2p",
  "libp2p-pubsub-common",
  "libp2p-pubsub-proto",
@@ -1400,7 +1409,7 @@ version = "0.1.0"
 dependencies = [
  "assert_matches",
  "futures",
- "itertools",
+ "itertools 0.12.0",
  "libp2p",
  "libp2p-pubsub-common",
  "libp2p-pubsub-core",
@@ -2101,7 +2110,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "265baba7fabd416cf5078179f7d2cbeca4ce7a9041111900675ea7c4cb8a4c32"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "syn 2.0.39",

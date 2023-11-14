@@ -16,7 +16,7 @@ base64 = "0.21.5"
 bytes.workspace = true
 futures.workspace = true
 hex_fmt = "0.3.0"
-itertools = "0.11.0"
+itertools = "0.12.0"
 libp2p.workspace = true
 libp2p-pubsub-common = { version = "0.1.0", path = "../pubsub-common" }
 libp2p-pubsub-proto = { version = "0.1.0", path = "../pubsub-proto" }
