@@ -16,4 +16,4 @@ proto-gen = []
 proto-gen-doc = []
 
 [dependencies]
-prost = "0.12.1"
+prost = "0.12.3"
